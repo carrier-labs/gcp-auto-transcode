@@ -66,14 +66,18 @@ func WatchForVideo(ctx context.Context, e GCSEvent) error {
 	log.Printf("Updated: %v\n", e.Updated)
 	log.Printf("e: %+v\n", e)
 
+	gsRef := fmt.Sprintf("gs://%s/%s", e.Bucket, e.Name)
+
+	// TODO: Get type of file from video/mp4 tag
+
 	// Check this matches an original upload
 	if match, _ := (filepath.Match("/media/video/original/*", e.Name)); match {
-		return processVideo(e)
+		return processVideo(gsRef)
 	}
 
 	// Check this matches an original upload
 	if match, _ := (filepath.Match("/media/image/original/*", e.Name)); match {
-		return processImage(e)
+		return processImage(gsRef)
 	}
 
 	return nil
