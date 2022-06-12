@@ -29,47 +29,51 @@ func processVideo(uri string) error {
 			InputUri:  uri,
 			OutputUri: strings.Replace(uri, "/original/", "/transcoded/", 1),
 			JobConfig: &transcoderpb.Job_Config{
-				Config: &transcoderpb.JobConfig{ElementaryStreams: []*transcoderpb.ElementaryStream{
-					{
-						Key: "video_stream0",
-						ElementaryStream: &transcoderpb.ElementaryStream_VideoStream{
-							VideoStream: &transcoderpb.VideoStream{
-								CodecSettings: &transcoderpb.VideoStream_H264{
-									H264: &transcoderpb.VideoStream_H264CodecSettings{
-										BitrateBps:   550000,
-										FrameRate:    60,
-										HeightPixels: 360,
-										WidthPixels:  640,
+				Config: &transcoderpb.JobConfig{
+					PubsubDestination: &transcoderpb.PubsubDestination{
+						Topic: fmt.Sprintf("projects/%s/topics/%s", ProjectId, "transcode-result"),
+					},
+					ElementaryStreams: []*transcoderpb.ElementaryStream{
+						{
+							Key: "video_stream0",
+							ElementaryStream: &transcoderpb.ElementaryStream_VideoStream{
+								VideoStream: &transcoderpb.VideoStream{
+									CodecSettings: &transcoderpb.VideoStream_H264{
+										H264: &transcoderpb.VideoStream_H264CodecSettings{
+											BitrateBps:   550000,
+											FrameRate:    60,
+											HeightPixels: 360,
+											WidthPixels:  640,
+										},
 									},
 								},
 							},
 						},
-					},
-					{
-						Key: "video_stream1",
-						ElementaryStream: &transcoderpb.ElementaryStream_VideoStream{
-							VideoStream: &transcoderpb.VideoStream{
-								CodecSettings: &transcoderpb.VideoStream_H264{
-									H264: &transcoderpb.VideoStream_H264CodecSettings{
-										BitrateBps:   2500000,
-										FrameRate:    60,
-										HeightPixels: 720,
-										WidthPixels:  1280,
+						{
+							Key: "video_stream1",
+							ElementaryStream: &transcoderpb.ElementaryStream_VideoStream{
+								VideoStream: &transcoderpb.VideoStream{
+									CodecSettings: &transcoderpb.VideoStream_H264{
+										H264: &transcoderpb.VideoStream_H264CodecSettings{
+											BitrateBps:   2500000,
+											FrameRate:    60,
+											HeightPixels: 720,
+											WidthPixels:  1280,
+										},
 									},
 								},
 							},
 						},
-					},
-					{
-						Key: "audio_stream0",
-						ElementaryStream: &transcoderpb.ElementaryStream_AudioStream{
-							AudioStream: &transcoderpb.AudioStream{
-								Codec:      "aac",
-								BitrateBps: 64000,
+						{
+							Key: "audio_stream0",
+							ElementaryStream: &transcoderpb.ElementaryStream_AudioStream{
+								AudioStream: &transcoderpb.AudioStream{
+									Codec:      "aac",
+									BitrateBps: 64000,
+								},
 							},
 						},
 					},
-				},
 					MuxStreams: []*transcoderpb.MuxStream{
 						{
 							Key:               "sd",
