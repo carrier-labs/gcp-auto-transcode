@@ -49,9 +49,9 @@ type GCSEvent struct {
 	ResourceState string `json:"resourceState"`
 }
 
-// watchForVideo consumes a(ny) GCS event.
+// WatchStorageBucket consumes a(ny) GCS event.
 // Configure to watch google.storage.object.finalize
-func WatchForVideo(ctx context.Context, e GCSEvent) error {
+func WatchStorageBucket(ctx context.Context, e GCSEvent) error {
 	meta, err := metadata.FromContext(ctx)
 	if err != nil {
 		return fmt.Errorf("metadata.FromContext: %v", err)
