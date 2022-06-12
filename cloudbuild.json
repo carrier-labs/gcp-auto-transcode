@@ -7,7 +7,7 @@
                 "functions",
                 "deploy",
                 "auto-transcode",
-                "--region=europe-west4",
+                "--region=europe-west2",
                 "--source=.",
                 "--trigger-resource=client_1165_red-bull_signage_store",
                 "--trigger-event=google.storage.object.finalize",
