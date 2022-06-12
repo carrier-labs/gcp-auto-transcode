@@ -71,9 +71,9 @@ func jobConfigWithoutAudio() *transcoderpb.JobConfig {
 				Key: "video_stream0",
 				ElementaryStream: &transcoderpb.ElementaryStream_VideoStream{
 					VideoStream: &transcoderpb.VideoStream{
-						CodecSettings: &transcoderpb.VideoStream_H264{
-							H264: &transcoderpb.VideoStream_H264CodecSettings{
-								BitrateBps:   550000,
+						CodecSettings: &transcoderpb.VideoStream_H265{
+							H265: &transcoderpb.VideoStream_H265CodecSettings{
+								BitrateBps:   1500000, // 1.5Mbps
 								FrameRate:    60,
 								HeightPixels: 360,
 								WidthPixels:  640,
@@ -86,9 +86,9 @@ func jobConfigWithoutAudio() *transcoderpb.JobConfig {
 				Key: "video_stream1",
 				ElementaryStream: &transcoderpb.ElementaryStream_VideoStream{
 					VideoStream: &transcoderpb.VideoStream{
-						CodecSettings: &transcoderpb.VideoStream_H264{
-							H264: &transcoderpb.VideoStream_H264CodecSettings{
-								BitrateBps:   2500000,
+						CodecSettings: &transcoderpb.VideoStream_H265{
+							H265: &transcoderpb.VideoStream_H265CodecSettings{
+								BitrateBps:   7500000, // 7.5Mbps
 								FrameRate:    60,
 								HeightPixels: 720,
 								WidthPixels:  1280,
@@ -97,17 +97,57 @@ func jobConfigWithoutAudio() *transcoderpb.JobConfig {
 					},
 				},
 			},
+			{
+				Key: "video_stream2",
+				ElementaryStream: &transcoderpb.ElementaryStream_VideoStream{
+					VideoStream: &transcoderpb.VideoStream{
+						CodecSettings: &transcoderpb.VideoStream_H265{
+							H265: &transcoderpb.VideoStream_H265CodecSettings{
+								BitrateBps:   12000000, // 12Mbps
+								FrameRate:    60,
+								HeightPixels: 1080,
+								WidthPixels:  1920,
+							},
+						},
+					},
+				},
+			},
+			{
+				Key: "video_stream3",
+				ElementaryStream: &transcoderpb.ElementaryStream_VideoStream{
+					VideoStream: &transcoderpb.VideoStream{
+						CodecSettings: &transcoderpb.VideoStream_H265{
+							H265: &transcoderpb.VideoStream_H265CodecSettings{
+								BitrateBps:   60000000, // 60Mbps
+								FrameRate:    60,
+								HeightPixels: 2160,
+								WidthPixels:  3840,
+							},
+						},
+					},
+				},
+			},
 		},
 		MuxStreams: []*transcoderpb.MuxStream{
 			{
-				Key:               "sd",
+				Key:               "h265-preview",
 				Container:         "mp4",
 				ElementaryStreams: []string{"video_stream0"},
 			},
 			{
-				Key:               "hd",
+				Key:               "h265-720p",
 				Container:         "mp4",
 				ElementaryStreams: []string{"video_stream1"},
+			},
+			{
+				Key:               "h265-1080p",
+				Container:         "mp4",
+				ElementaryStreams: []string{"video_stream2"},
+			},
+			{
+				Key:               "h265-2160p",
+				Container:         "mp4",
+				ElementaryStreams: []string{"video_stream3"},
 			},
 		},
 	}
