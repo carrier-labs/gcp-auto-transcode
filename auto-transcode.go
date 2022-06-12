@@ -63,7 +63,7 @@ func WatchStorageBucket(ctx context.Context, e GCSEvent) error {
 	gsRef := fmt.Sprintf("gs://%s/%s", e.Bucket, e.Name)
 
 	// Check file is in Uploads folder
-	if match, _ := (path.Match("media/video/upload/*.*", e.Name)); !match {
+	if match, _ := (path.Match("media/upload/*.*", e.Name)); !match {
 		return nil
 	}
 
