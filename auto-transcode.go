@@ -71,7 +71,7 @@ func WatchStorageBucket(ctx context.Context, e GCSEvent) error {
 
 	switch getContentType(e.ContentType) {
 	case "video":
-		dest := fmt.Sprintf("gs://%s/video/%s/", e.Bucket, e.MD5Hash)
+		dest := fmt.Sprintf("gs://%s/media/video/%s/", e.Bucket, e.MD5Hash)
 		return processVideo(gsRef, dest)
 	case "image":
 		return processImage(gsRef)
