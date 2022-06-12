@@ -57,26 +57,26 @@ func WatchStorageBucket(ctx context.Context, e GCSEvent) error {
 		return fmt.Errorf("metadata.FromContext: %v", err)
 	}
 
-	log.Printf("Event ID: %v\n", meta.EventID)
 	log.Printf("Event type: %v\n", meta.EventType)
 	log.Printf("Bucket: %v\n", e.Bucket)
 	log.Printf("File: %v\n", e.Name)
-	log.Printf("Metageneration: %v\n", e.Metageneration)
-	log.Printf("Created: %v\n", e.TimeCreated)
-	log.Printf("Updated: %v\n", e.Updated)
-	log.Printf("e: %+v\n", e)
 
 	gsRef := fmt.Sprintf("gs://%s/%s", e.Bucket, e.Name)
+	log.Printf("gs-ref: %v\n", e.Name)
 
 	// TODO: Get type of file from video/mp4 tag
 
-	// Check this matches an original upload
-	if match, _ := (filepath.Match("/media/video/original/*", e.Name)); match {
-		return processVideo(gsRef)
-	}
+	log.Printf("Matching %s in %s", "*/media/video/original/*", e.Name)
 
 	// Check this matches an original upload
-	if match, _ := (filepath.Match("/media/image/original/*", e.Name)); match {
+	if match, _ := (filepath.Match("*/media/video/original/*", e.Name)); match {
+		log.Printf("Found")
+		return processVideo(gsRef)
+	}
+	log.Printf("Not Found")
+
+	// Check this matches an original upload
+	if match, _ := (filepath.Match("*/media/image/original/*", e.Name)); match {
 		return processImage(gsRef)
 	}
 
