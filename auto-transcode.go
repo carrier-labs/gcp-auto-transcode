@@ -5,10 +5,14 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"path/filepath"
 	"time"
 
+	computemd "cloud.google.com/go/compute/metadata"
 	"cloud.google.com/go/functions/metadata"
 )
+
+var ProjectId, _ = computemd.ProjectID()
 
 // GCSEvent is the payload of a GCS event.
 type GCSEvent struct {
@@ -52,6 +56,7 @@ func WatchForVideo(ctx context.Context, e GCSEvent) error {
 	if err != nil {
 		return fmt.Errorf("metadata.FromContext: %v", err)
 	}
+
 	log.Printf("Event ID: %v\n", meta.EventID)
 	log.Printf("Event type: %v\n", meta.EventType)
 	log.Printf("Bucket: %v\n", e.Bucket)
@@ -59,8 +64,17 @@ func WatchForVideo(ctx context.Context, e GCSEvent) error {
 	log.Printf("Metageneration: %v\n", e.Metageneration)
 	log.Printf("Created: %v\n", e.TimeCreated)
 	log.Printf("Updated: %v\n", e.Updated)
+	log.Printf("e: %+v\n", e)
 
-	filepath.
+	// Check this matches an original upload
+	if match, _ := (filepath.Match("/media/video/original/*", e.Name)); match {
+		return processVideo(e)
+	}
+
+	// Check this matches an original upload
+	if match, _ := (filepath.Match("/media/image/original/*", e.Name)); match {
+		return processImage(e)
+	}
 
 	return nil
 }

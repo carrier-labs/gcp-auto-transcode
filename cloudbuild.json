@@ -1,0 +1,20 @@
+{
+    "steps": [
+     {
+        "name": "gcr.io/google.com/cloudsdktool/cloud-sdk",
+        "args": [
+          "gcloud",
+          "functions",
+          "deploy",
+           [
+             "auto-transcode"
+           ],
+           "--region=europe-west4",
+           "--source=.",
+           "--trigger-resource client_1165_red-bull_signage_store",
+           "--trigger-event google.storage.object.finalize",
+           "--runtime=go116"
+        ]
+      }
+     ]
+   }
