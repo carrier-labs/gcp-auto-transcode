@@ -92,7 +92,7 @@ func processVideo(uri string) error {
 		return err
 	}
 	// TODO: Use resp.
-	_ = resp
+	log.Printf("Sent Transcode Job: %s", resp.GetName())
 
 	return nil
 }
