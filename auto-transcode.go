@@ -5,7 +5,7 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"path/filepath"
+	"path"
 	"time"
 
 	computemd "cloud.google.com/go/compute/metadata"
@@ -66,17 +66,17 @@ func WatchStorageBucket(ctx context.Context, e GCSEvent) error {
 
 	// TODO: Get type of file from video/mp4 tag
 
-	log.Printf("Matching %s in %s", "*/media/video/original/*", e.Name)
+	log.Printf("Matching %s in %s", "media/video/original/*", e.Name)
 
 	// Check this matches an original upload
-	if match, _ := (filepath.Match("*/media/video/original/*", e.Name)); match {
+	if match, _ := (path.Match("media/video/original/*", e.Name)); match {
 		log.Printf("Found")
 		return processVideo(gsRef)
 	}
 	log.Printf("Not Found")
 
 	// Check this matches an original upload
-	if match, _ := (filepath.Match("*/media/image/original/*", e.Name)); match {
+	if match, _ := (path.Match("media/image/original/*", e.Name)); match {
 		return processImage(gsRef)
 	}
 
