@@ -23,91 +23,122 @@ func processVideo(uri string, dest string) error {
 
 	// Get base
 
-	// Basic Transcoding
-	req := &transcoderpb.CreateJobRequest{
+	// Request Transcoding without Audio
+
+	resp, err := c.CreateJob(ctx, &transcoderpb.CreateJobRequest{
 		Parent: fmt.Sprintf("projects/%s/locations/%s", ProjectId, "europe-west4"),
 		Job: &transcoderpb.Job{
 			InputUri:  uri,
 			OutputUri: dest,
 			JobConfig: &transcoderpb.Job_Config{
-				Config: &transcoderpb.JobConfig{
-					PubsubDestination: &transcoderpb.PubsubDestination{
-						Topic: fmt.Sprintf("projects/%s/topics/%s", ProjectId, "transcode-result"),
+				Config: jobConfigWithoutAudio(),
+			},
+		},
+	})
+	if err != nil {
+		return err
+	}
+
+	log.Printf("Video Transcode Job: %s", resp.GetName())
+
+	// Request Transcoding with Audio
+	resp, err = c.CreateJob(ctx, &transcoderpb.CreateJobRequest{
+		Parent: fmt.Sprintf("projects/%s/locations/%s", ProjectId, "europe-west4"),
+		Job: &transcoderpb.Job{
+			InputUri:  uri,
+			OutputUri: dest,
+			JobConfig: &transcoderpb.Job_Config{
+				Config: jobConfigWithAudio(),
+			},
+		},
+	})
+	if err != nil {
+		return err
+	}
+
+	log.Printf("Video+Audio Transcode Job: %s", resp.GetName())
+
+	return nil
+}
+
+func jobConfigWithoutAudio() *transcoderpb.JobConfig {
+	return &transcoderpb.JobConfig{
+		PubsubDestination: &transcoderpb.PubsubDestination{
+			Topic: fmt.Sprintf("projects/%s/topics/%s", ProjectId, "transcode-result"),
+		},
+		ElementaryStreams: []*transcoderpb.ElementaryStream{
+			{
+				Key: "video_stream0",
+				ElementaryStream: &transcoderpb.ElementaryStream_VideoStream{
+					VideoStream: &transcoderpb.VideoStream{
+						CodecSettings: &transcoderpb.VideoStream_H264{
+							H264: &transcoderpb.VideoStream_H264CodecSettings{
+								BitrateBps:   550000,
+								FrameRate:    60,
+								HeightPixels: 360,
+								WidthPixels:  640,
+							},
+						},
 					},
-					ElementaryStreams: []*transcoderpb.ElementaryStream{
-						{
-							Key: "video_stream0",
-							ElementaryStream: &transcoderpb.ElementaryStream_VideoStream{
-								VideoStream: &transcoderpb.VideoStream{
-									CodecSettings: &transcoderpb.VideoStream_H264{
-										H264: &transcoderpb.VideoStream_H264CodecSettings{
-											BitrateBps:   550000,
-											FrameRate:    60,
-											HeightPixels: 360,
-											WidthPixels:  640,
-										},
-									},
-								},
+				},
+			},
+			{
+				Key: "video_stream1",
+				ElementaryStream: &transcoderpb.ElementaryStream_VideoStream{
+					VideoStream: &transcoderpb.VideoStream{
+						CodecSettings: &transcoderpb.VideoStream_H264{
+							H264: &transcoderpb.VideoStream_H264CodecSettings{
+								BitrateBps:   2500000,
+								FrameRate:    60,
+								HeightPixels: 720,
+								WidthPixels:  1280,
 							},
-						},
-						{
-							Key: "video_stream1",
-							ElementaryStream: &transcoderpb.ElementaryStream_VideoStream{
-								VideoStream: &transcoderpb.VideoStream{
-									CodecSettings: &transcoderpb.VideoStream_H264{
-										H264: &transcoderpb.VideoStream_H264CodecSettings{
-											BitrateBps:   2500000,
-											FrameRate:    60,
-											HeightPixels: 720,
-											WidthPixels:  1280,
-										},
-									},
-								},
-							},
-						},
-						{
-							Key: "audio_stream0",
-							ElementaryStream: &transcoderpb.ElementaryStream_AudioStream{
-								AudioStream: &transcoderpb.AudioStream{
-									Codec:      "aac",
-									BitrateBps: 64000,
-								},
-							},
-						},
-					},
-					MuxStreams: []*transcoderpb.MuxStream{
-						{
-							Key:               "sd",
-							Container:         "mp4",
-							ElementaryStreams: []string{"video_stream0"},
-						},
-						{
-							Key:               "hd",
-							Container:         "mp4",
-							ElementaryStreams: []string{"video_stream1"},
-						},
-						{
-							Key:               "sd_audio",
-							Container:         "mp4",
-							ElementaryStreams: []string{"video_stream0", "audio_stream0"},
-						},
-						{
-							Key:               "hd_audio",
-							Container:         "mp4",
-							ElementaryStreams: []string{"video_stream1", "audio_stream0"},
 						},
 					},
 				},
 			},
 		},
+		MuxStreams: []*transcoderpb.MuxStream{
+			{
+				Key:               "sd",
+				Container:         "mp4",
+				ElementaryStreams: []string{"video_stream0"},
+			},
+			{
+				Key:               "hd",
+				Container:         "mp4",
+				ElementaryStreams: []string{"video_stream1"},
+			},
+		},
+	}
+}
+
+func jobConfigWithAudio() *transcoderpb.JobConfig {
+
+	config := jobConfigWithoutAudio()
+
+	config.ElementaryStreams = append(config.ElementaryStreams, &transcoderpb.ElementaryStream{
+		Key: "audio_stream0",
+		ElementaryStream: &transcoderpb.ElementaryStream_AudioStream{
+			AudioStream: &transcoderpb.AudioStream{
+				Codec:      "aac",
+				BitrateBps: 64000,
+			},
+		},
+	})
+
+	config.MuxStreams = []*transcoderpb.MuxStream{
+		{
+			Key:               "sd_audio",
+			Container:         "mp4",
+			ElementaryStreams: []string{"video_stream0", "audio_stream0"},
+		},
+		{
+			Key:               "hd_audio",
+			Container:         "mp4",
+			ElementaryStreams: []string{"video_stream1", "audio_stream0"},
+		},
 	}
 
-	resp, err := c.CreateJob(ctx, req)
-	if err != nil {
-		return err
-	}
-	// TODO: Use resp.
-	log.Printf("Sent Transcode Job: %s", resp.GetName())
-
-	return nil
+	return config
 }
