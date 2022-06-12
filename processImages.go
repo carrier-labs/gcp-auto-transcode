@@ -1,4 +1,4 @@
-package transcode
+package cloudfunctiontranscode
 
 func processImage(e GCSEvent) error {
 

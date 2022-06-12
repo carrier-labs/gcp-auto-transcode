@@ -9,6 +9,7 @@
                 "auto-transcode",
                 "--region=europe-west2",
                 "--source=.",
+                "--entry-point=WatchForVideo",
                 "--trigger-resource=client_1165_red-bull_signage_store",
                 "--trigger-event=google.storage.object.finalize",
                 "--runtime=go116"

@@ -1,5 +1,5 @@
 // Package helloworld provides a set of Cloud Functions samples.
-package transcode
+package cloudfunctiontranscode
 
 import (
 	"context"
