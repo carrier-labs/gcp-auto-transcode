@@ -79,10 +79,20 @@ func processVideo(uri string, dest string) error {
 						{
 							Key:               "sd",
 							Container:         "mp4",
-							ElementaryStreams: []string{"video_stream0", "audio_stream0"},
+							ElementaryStreams: []string{"video_stream0"},
 						},
 						{
 							Key:               "hd",
+							Container:         "mp4",
+							ElementaryStreams: []string{"video_stream1"},
+						},
+						{
+							Key:               "sd_audio",
+							Container:         "mp4",
+							ElementaryStreams: []string{"video_stream0", "audio_stream0"},
+						},
+						{
+							Key:               "hd_audio",
 							Container:         "mp4",
 							ElementaryStreams: []string{"video_stream1", "audio_stream0"},
 						},
