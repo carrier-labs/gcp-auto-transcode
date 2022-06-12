@@ -4,13 +4,12 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strings"
 
 	transcoder "cloud.google.com/go/video/transcoder/apiv1"
 	transcoderpb "google.golang.org/genproto/googleapis/cloud/video/transcoder/v1"
 )
 
-func processVideo(uri string) error {
+func processVideo(uri string, dest string) error {
 
 	log.Printf("Processing Video: %s", uri)
 
@@ -22,12 +21,14 @@ func processVideo(uri string) error {
 	}
 	defer c.Close()
 
+	// Get base
+
 	// Basic Transcoding
 	req := &transcoderpb.CreateJobRequest{
 		Parent: fmt.Sprintf("projects/%s/locations/%s", ProjectId, "europe-west4"),
 		Job: &transcoderpb.Job{
 			InputUri:  uri,
-			OutputUri: strings.Replace(uri, "/original/", "/transcoded/", 1),
+			OutputUri: dest,
 			JobConfig: &transcoderpb.Job_Config{
 				Config: &transcoderpb.JobConfig{
 					PubsubDestination: &transcoderpb.PubsubDestination{

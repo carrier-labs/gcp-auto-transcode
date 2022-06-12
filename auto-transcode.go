@@ -4,12 +4,11 @@ package cloudfunctiontranscode
 import (
 	"context"
 	"fmt"
-	"log"
 	"path"
+	"strings"
 	"time"
 
 	computemd "cloud.google.com/go/compute/metadata"
-	"cloud.google.com/go/functions/metadata"
 )
 
 var ProjectId, _ = computemd.ProjectID()
@@ -52,33 +51,39 @@ type GCSEvent struct {
 // WatchStorageBucket consumes a(ny) GCS event.
 // Configure to watch google.storage.object.finalize
 func WatchStorageBucket(ctx context.Context, e GCSEvent) error {
-	meta, err := metadata.FromContext(ctx)
-	if err != nil {
-		return fmt.Errorf("metadata.FromContext: %v", err)
-	}
+	// meta, err := metadata.FromContext(ctx)
+	// if err != nil {
+	// 	return fmt.Errorf("metadata.FromContext: %v", err)
+	// }
 
-	log.Printf("Event type: %v\n", meta.EventType)
-	log.Printf("Bucket: %v\n", e.Bucket)
-	log.Printf("File: %v\n", e.Name)
+	// log.Printf("Event type: %v\n", meta.EventType)
+	// log.Printf("Bucket: %v\n", e.Bucket)
+	// log.Printf("File: %v\n", e.Name)
 
 	gsRef := fmt.Sprintf("gs://%s/%s", e.Bucket, e.Name)
-	log.Printf("gs-ref: %v\n", e.Name)
+
+	// Check file is in Uploads folder
+	if match, _ := (path.Match("media/video/upload/*.*", e.Name)); !match {
+		return nil
+	}
 
 	// TODO: Get type of file from video/mp4 tag
 
-	log.Printf("Matching %s in %s", "media/video/original/*", e.Name)
-
-	// Check this matches an original upload
-	if match, _ := (path.Match("media/video/original/*", e.Name)); match {
-		log.Printf("Found")
-		return processVideo(gsRef)
-	}
-	log.Printf("Not Found")
-
-	// Check this matches an original upload
-	if match, _ := (path.Match("media/image/original/*", e.Name)); match {
+	switch getContentType(e.ContentType) {
+	case "video":
+		dest := fmt.Sprintf("gs://%s/video/%s/", e.Bucket, e.MD5Hash)
+		return processVideo(gsRef, dest)
+	case "image":
 		return processImage(gsRef)
 	}
 
 	return nil
+}
+
+func getContentType(mime string) (Type string) {
+	s := strings.Split(mime, "/")
+	if len(s) > 0 {
+		Type = s[0]
+	}
+	return
 }
