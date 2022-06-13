@@ -40,7 +40,10 @@ func processVideo(ctx context.Context, e GCSEvent) error {
 		SizeMB: e.SizeMB,
 		Mime:   e.ContentType,
 	}
-	_, err = fs.Collection("media-video").Doc(e.MD5Hash).Set(ctx, entry, firestore.Merge())
+
+	log.Printf("entry: %+v", entry)
+	r, err := fs.Collection("media-video").Doc(e.MD5Hash).Set(ctx, entry, firestore.Merge())
+	log.Printf("WriteResult: %v", r)
 	if err != nil {
 		return err
 	}
