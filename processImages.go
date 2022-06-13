@@ -1,10 +1,15 @@
 package cloudfunctiontranscode
 
-import "log"
+import (
+	"context"
+	"log"
+)
 
-func processImage(uri string) error {
+func processImage(ctx context.Context, e GCSEvent) error {
 
-	log.Printf("Processing Video: %s", uri)
+	log.Printf("Processing Image: %s", e.Name)
+
+	moveFile(ctx, e)
 
 	return nil
 }

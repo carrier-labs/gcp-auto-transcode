@@ -4,32 +4,60 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"path"
 
+	"cloud.google.com/go/firestore"
 	transcoder "cloud.google.com/go/video/transcoder/apiv1"
 	transcoderpb "google.golang.org/genproto/googleapis/cloud/video/transcoder/v1"
 )
 
-func processVideo(uri string, dest string) error {
+func processVideo(ctx context.Context, e GCSEvent) error {
 
-	log.Printf("Processing Video: %s", uri)
+	log.Printf("Processing Video: %s", e.Name)
+
+	// Move video
+	f, err := moveFile(ctx, e)
+	if err != nil {
+		return err
+	}
+
+	// Update Firestore
+	fs := ctx.Value(keyFirestoreClient).(*firestore.Client)
+
+	// Populate Firebase
+	type dbEntry struct {
+		Name   string  `firestore:"og-name"`
+		MD5    string  `firestore:"md5-uid"`
+		Mime   string  `firestore:"mime"`
+		SizeB  int     `firestore:"size-B"`
+		SizeMB float64 `firestore:"size-MB"`
+	}
+
+	entry := dbEntry{
+		Name:   path.Base(e.Name),
+		MD5:    e.MD5Hash,
+		SizeB:  e.SizeB,
+		SizeMB: e.SizeMB,
+		Mime:   e.ContentType,
+	}
+	_, err = fs.Collection("media-video").Doc(e.MD5Hash).Set(ctx, entry, firestore.Merge())
+	if err != nil {
+		return err
+	}
 
 	// Get Transcoder API Client
-	ctx := context.Background()
 	c, err := transcoder.NewClient(ctx)
 	if err != nil {
 		return err
 	}
 	defer c.Close()
 
-	// Get base
-
-	// Request Transcoding without Audio
-
+	// Request Transcoding Job (without Audio)
 	resp, err := c.CreateJob(ctx, &transcoderpb.CreateJobRequest{
 		Parent: fmt.Sprintf("projects/%s/locations/%s", ProjectId, "europe-west4"),
 		Job: &transcoderpb.Job{
-			InputUri:  uri,
-			OutputUri: dest,
+			InputUri:  f,
+			OutputUri: path.Dir(f),
 			JobConfig: &transcoderpb.Job_Config{
 				Config: jobConfigWithoutAudio(),
 			},
@@ -41,12 +69,12 @@ func processVideo(uri string, dest string) error {
 
 	log.Printf("Video Transcode Job: %s", resp.GetName())
 
-	// Request Transcoding with Audio
+	// Request Transcoding Job (with Audio)
 	resp, err = c.CreateJob(ctx, &transcoderpb.CreateJobRequest{
 		Parent: fmt.Sprintf("projects/%s/locations/%s", ProjectId, "europe-west4"),
 		Job: &transcoderpb.Job{
-			InputUri:  uri,
-			OutputUri: dest,
+			InputUri:  f,
+			OutputUri: path.Dir(f),
 			JobConfig: &transcoderpb.Job_Config{
 				Config: jobConfigWithAudio(),
 			},

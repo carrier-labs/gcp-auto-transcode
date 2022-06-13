@@ -4,11 +4,15 @@ package cloudfunctiontranscode
 import (
 	"context"
 	"fmt"
+	"log"
 	"path"
+	"strconv"
 	"strings"
 	"time"
 
 	computemd "cloud.google.com/go/compute/metadata"
+	"cloud.google.com/go/storage"
+	firebase "firebase.google.com/go"
 )
 
 var ProjectId, _ = computemd.ProjectID()
@@ -30,7 +34,7 @@ type GCSEvent struct {
 	RetentionExpirationTime time.Time              `json:"retentionExpirationTime"`
 	StorageClass            string                 `json:"storageClass"`
 	TimeStorageClassUpdated time.Time              `json:"timeStorageClassUpdated"`
-	Size                    string                 `json:"size"`
+	SizeString              string                 `json:"size"`
 	MD5Hash                 string                 `json:"md5Hash"`
 	MediaLink               string                 `json:"mediaLink"`
 	ContentEncoding         string                 `json:"contentEncoding"`
@@ -46,35 +50,56 @@ type GCSEvent struct {
 	}
 	KMSKeyName    string `json:"kmsKeyName"`
 	ResourceState string `json:"resourceState"`
+	SizeB         int
+	SizeMB        float64
 }
+
+type key int
+
+const (
+	keyStorageBucket key = iota
+	keyFirestoreClient
+)
 
 // WatchStorageBucket consumes a(ny) GCS event.
 // Configure to watch google.storage.object.finalize
 func WatchStorageBucket(ctx context.Context, e GCSEvent) error {
-	// meta, err := metadata.FromContext(ctx)
-	// if err != nil {
-	// 	return fmt.Errorf("metadata.FromContext: %v", err)
-	// }
-
-	// log.Printf("Event type: %v\n", meta.EventType)
-	// log.Printf("Bucket: %v\n", e.Bucket)
-	// log.Printf("File: %v\n", e.Name)
-
-	gsRef := fmt.Sprintf("gs://%s/%s", e.Bucket, e.Name)
 
 	// Check file is in Uploads folder
 	if match, _ := (path.Match("media/upload/*.*", e.Name)); !match {
 		return nil
 	}
 
-	// TODO: Get type of file from video/mp4 tag
+	// Some maths on file size
+	e.SizeB, _ = strconv.Atoi(e.SizeString)
+	e.SizeMB = float64(e.SizeB) / (1 << 20)
 
+	// Create Storage Client and add to context
+	storageClient, err := storage.NewClient(ctx)
+	if err != nil {
+		return err
+	}
+	ctx = context.WithValue(ctx, keyStorageBucket, storageClient.Bucket(e.Bucket))
+
+	// Open connection to Firestore
+	conf := &firebase.Config{ProjectID: ProjectId}
+	app, err := firebase.NewApp(ctx, conf)
+	if err != nil {
+		return err
+	}
+
+	firestoreClient, err := app.Firestore(ctx)
+	if err != nil {
+		return err
+	}
+	ctx = context.WithValue(ctx, keyFirestoreClient, firestoreClient)
+
+	// TODO: Get type of file from video/mp4 tag
 	switch getContentType(e.ContentType) {
 	case "video":
-		dest := fmt.Sprintf("gs://%s/media/video/%s/", e.Bucket, e.MD5Hash)
-		return processVideo(gsRef, dest)
+		return processVideo(ctx, e)
 	case "image":
-		return processImage(gsRef)
+		return processImage(ctx, e)
 	}
 
 	return nil
@@ -86,4 +111,24 @@ func getContentType(mime string) (Type string) {
 		Type = s[0]
 	}
 	return
+}
+
+func moveFile(ctx context.Context, e GCSEvent) (string, error) {
+
+	// Get Storage Bucket Handle
+	bucket := ctx.Value(keyStorageBucket).(*storage.BucketHandle)
+
+	// Get Src File
+	src := bucket.Object(e.Name)
+
+	dest := bucket.Object(fmt.Sprintf("media/%s/%s/og-%s", e.ContentType, e.MD5Hash, path.Base(e.Name)))
+	if _, err := dest.CopierFrom(src).Run(ctx); err != nil {
+		return "", fmt.Errorf("Object(%q).CopierFrom(%q).Run: %v", dest.ObjectName(), src.ObjectName(), err)
+	}
+	if err := src.Delete(ctx); err != nil {
+		return "", fmt.Errorf("Object(%q).Delete: %v", src.ObjectName(), err)
+	}
+	log.Printf("File %v moved to %v.\n", src.ObjectName(), dest.ObjectName())
+
+	return fmt.Sprintf("gs://%s/%s", dest.BucketName(), dest.ObjectName()), nil
 }
