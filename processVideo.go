@@ -27,7 +27,7 @@ func processVideo(ctx context.Context, e GCSEvent) error {
 	// Populate Firebase
 	type dbEntry struct {
 		Name   string  `firestore:"og-name"`
-		MD5    string  `firestore:"md5-uid"`
+		MD5    string  `firestore:"md5"`
 		Mime   string  `firestore:"mime"`
 		SizeB  int     `firestore:"size-B"`
 		SizeMB float64 `firestore:"size-MB"`
@@ -41,9 +41,8 @@ func processVideo(ctx context.Context, e GCSEvent) error {
 		Mime:   e.ContentType,
 	}
 
-	log.Printf("entry: %+v", entry)
-	r, err := fs.Collection("video").Doc(e.MD5Hash).Set(ctx, entry)
-	log.Printf("WriteResult: %v", r)
+	_, err = fs.Collection("video").Doc(e.MD5Hash).Set(ctx, entry)
+
 	if err != nil {
 		return err
 	}
@@ -54,6 +53,9 @@ func processVideo(ctx context.Context, e GCSEvent) error {
 		return err
 	}
 	defer c.Close()
+
+	log.Printf("gsURI: %s", f)
+	log.Printf("gsDIR: %s", path.Dir(f))
 
 	// Request Transcoding Job (without Audio)
 	resp, err := c.CreateJob(ctx, &transcoderpb.CreateJobRequest{

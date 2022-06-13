@@ -131,7 +131,7 @@ func moveFile(ctx context.Context, e GCSEvent) (string, error) {
 	if err := src.Delete(ctx); err != nil {
 		return "", fmt.Errorf("Object(%q).Delete: %v", src.ObjectName(), err)
 	}
-	log.Printf("File %v moved to %v.\n", src.ObjectName(), dest.ObjectName())
+	log.Printf("File %v moved to %v\n", src.ObjectName(), dest.ObjectName())
 
 	return fmt.Sprintf("gs://%s/%s", dest.BucketName(), dest.ObjectName()), nil
 }
