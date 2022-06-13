@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math"
 	"path"
 	"strconv"
 	"strings"
@@ -73,6 +74,7 @@ func WatchStorageBucket(ctx context.Context, e GCSEvent) error {
 	// Some maths on file size
 	e.SizeB, _ = strconv.Atoi(e.SizeString)
 	e.SizeMB = float64(e.SizeB) / (1 << 20)
+	e.SizeMB = math.Round(e.SizeMB*100) / 100
 
 	// Create Storage Client and add to context
 	storageClient, err := storage.NewClient(ctx)
@@ -92,6 +94,7 @@ func WatchStorageBucket(ctx context.Context, e GCSEvent) error {
 	if err != nil {
 		return err
 	}
+	defer firestoreClient.Close()
 	ctx = context.WithValue(ctx, keyFirestoreClient, firestoreClient)
 
 	// TODO: Get type of file from video/mp4 tag
