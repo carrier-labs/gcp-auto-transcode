@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"path"
+	"strings"
 
 	"cloud.google.com/go/firestore"
 	transcoder "cloud.google.com/go/video/transcoder/apiv1"
@@ -16,7 +17,7 @@ func processVideo(ctx context.Context, e GCSEvent) error {
 	log.Printf("Processing Video: %s", e.Name)
 
 	// Move video
-	f, err := moveFile(ctx, e)
+	ogFile, err := moveFile(ctx, e)
 	if err != nil {
 		return err
 	}
@@ -58,8 +59,8 @@ func processVideo(ctx context.Context, e GCSEvent) error {
 	resp, err := c.CreateJob(ctx, &transcoderpb.CreateJobRequest{
 		Parent: fmt.Sprintf("projects/%s/locations/%s", ProjectId, "europe-west4"),
 		Job: &transcoderpb.Job{
-			InputUri:  f,
-			OutputUri: fmt.Sprintf("%s/", path.Dir(f)),
+			InputUri:  ogFile,
+			OutputUri: strings.TrimSuffix(ogFile, path.Base(ogFile)),
 			JobConfig: &transcoderpb.Job_Config{
 				Config: jobConfigWithoutAudio(),
 			},
@@ -75,8 +76,8 @@ func processVideo(ctx context.Context, e GCSEvent) error {
 	resp, err = c.CreateJob(ctx, &transcoderpb.CreateJobRequest{
 		Parent: fmt.Sprintf("projects/%s/locations/%s", ProjectId, "europe-west4"),
 		Job: &transcoderpb.Job{
-			InputUri:  f,
-			OutputUri: fmt.Sprintf("%s/", path.Dir(f)),
+			InputUri:  ogFile,
+			OutputUri: strings.TrimSuffix(ogFile, path.Base(ogFile)),
 			JobConfig: &transcoderpb.Job_Config{
 				Config: jobConfigWithAudio(),
 			},
