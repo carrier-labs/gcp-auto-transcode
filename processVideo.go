@@ -71,8 +71,8 @@ func jobConfigWithoutAudio() *transcoderpb.JobConfig {
 				Key: "video_stream0",
 				ElementaryStream: &transcoderpb.ElementaryStream_VideoStream{
 					VideoStream: &transcoderpb.VideoStream{
-						CodecSettings: &transcoderpb.VideoStream_H265{
-							H265: &transcoderpb.VideoStream_H265CodecSettings{
+						CodecSettings: &transcoderpb.VideoStream_H264{
+							H264: &transcoderpb.VideoStream_H264CodecSettings{
 								BitrateBps:   1500000, // 1.5Mbps
 								FrameRate:    60,
 								HeightPixels: 360,
@@ -130,7 +130,7 @@ func jobConfigWithoutAudio() *transcoderpb.JobConfig {
 		},
 		MuxStreams: []*transcoderpb.MuxStream{
 			{
-				Key:               "h265-preview",
+				Key:               "h264-preview",
 				Container:         "mp4",
 				ElementaryStreams: []string{"video_stream0"},
 			},
@@ -169,14 +169,24 @@ func jobConfigWithAudio() *transcoderpb.JobConfig {
 
 	config.MuxStreams = []*transcoderpb.MuxStream{
 		{
-			Key:               "sd_audio",
+			Key:               "h264-preview-audio",
 			Container:         "mp4",
 			ElementaryStreams: []string{"video_stream0", "audio_stream0"},
 		},
 		{
-			Key:               "hd_audio",
+			Key:               "h265-720p-audio",
 			Container:         "mp4",
 			ElementaryStreams: []string{"video_stream1", "audio_stream0"},
+		},
+		{
+			Key:               "h265-1080p-audio",
+			Container:         "mp4",
+			ElementaryStreams: []string{"video_stream2", "audio_stream0"},
+		},
+		{
+			Key:               "h265-2160p-audio",
+			Container:         "mp4",
+			ElementaryStreams: []string{"video_stream3", "audio_stream0"},
 		},
 	}
 
