@@ -161,7 +161,7 @@ func jobConfigWithoutAudio() *transcoderpb.JobConfig {
 		},
 		MuxStreams: []*transcoderpb.MuxStream{
 			{
-				Key:               "h264-preview",
+				Key:               "h264-360p",
 				Container:         "mp4",
 				ElementaryStreams: []string{"video_stream0"},
 			},
@@ -200,7 +200,7 @@ func jobConfigWithAudio() *transcoderpb.JobConfig {
 
 	config.MuxStreams = []*transcoderpb.MuxStream{
 		{
-			Key:               "h264-preview-audio",
+			Key:               "h264-360p-audio",
 			Container:         "mp4",
 			ElementaryStreams: []string{"video_stream0", "audio_stream0"},
 		},
