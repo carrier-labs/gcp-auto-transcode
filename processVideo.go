@@ -54,15 +54,12 @@ func processVideo(ctx context.Context, e GCSEvent) error {
 	}
 	defer c.Close()
 
-	log.Printf("gsURI: %s", f)
-	log.Printf("gsDIR: %s", path.Dir(f))
-
 	// Request Transcoding Job (without Audio)
 	resp, err := c.CreateJob(ctx, &transcoderpb.CreateJobRequest{
 		Parent: fmt.Sprintf("projects/%s/locations/%s", ProjectId, "europe-west4"),
 		Job: &transcoderpb.Job{
 			InputUri:  f,
-			OutputUri: path.Dir(f),
+			OutputUri: fmt.Sprintf("%s/", path.Dir(f)),
 			JobConfig: &transcoderpb.Job_Config{
 				Config: jobConfigWithoutAudio(),
 			},
@@ -79,7 +76,7 @@ func processVideo(ctx context.Context, e GCSEvent) error {
 		Parent: fmt.Sprintf("projects/%s/locations/%s", ProjectId, "europe-west4"),
 		Job: &transcoderpb.Job{
 			InputUri:  f,
-			OutputUri: path.Dir(f),
+			OutputUri: fmt.Sprintf("%s/", path.Dir(f)),
 			JobConfig: &transcoderpb.Job_Config{
 				Config: jobConfigWithAudio(),
 			},
