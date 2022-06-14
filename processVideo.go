@@ -14,33 +14,6 @@ import (
 	transcoderpb "google.golang.org/genproto/googleapis/cloud/video/transcoder/v1"
 )
 
-func probeVideo(ctx context.Context, e GCSEvent) (map[string]interface{}, error) {
-	// use FFmpeg to get details about video
-	// Provide an empty string to use default FFmpeg path
-	bucket := storageClient.Bucket(e.Bucket)
-
-	// Open file for reading
-	r, err := bucket.Object(e.Name).NewReader(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("NewReader: %s", err)
-	}
-
-	// Create and open new file
-	fo, err := os.Create(path.Base(e.Name))
-	if err != nil {
-		log.Printf("os.Create: %s", err)
-	}
-	// Copy file over
-	size, err := io.Copy(fo, r)
-	if err != nil {
-		log.Printf("io.Copy: %s", err)
-	}
-	log.Printf("Written: %d", size)
-
-	return fluentffmpeg.Probe(path.Base(e.Name))
-
-}
-
 func processVideo(ctx context.Context, e GCSEvent) error {
 
 	log.Printf("Processing Video: %s", e.Name)
@@ -54,7 +27,7 @@ func processVideo(ctx context.Context, e GCSEvent) error {
 	// Move video
 	ogFile, err := moveFile(ctx, e)
 	if err != nil {
-		return err
+		return fmt.Errorf("move file: %s", err)
 	}
 
 	// Populate Firebase
@@ -77,7 +50,7 @@ func processVideo(ctx context.Context, e GCSEvent) error {
 	_, err = firestoreClient.Collection("video").Doc(entry.MD5).Set(ctx, entry)
 
 	if err != nil {
-		return err
+		return fmt.Errorf("firebase set: %s", err)
 	}
 
 	// Get Transcoder API Client
@@ -255,4 +228,33 @@ func jobConfigWithAudio() *transcoderpb.JobConfig {
 	}
 
 	return config
+}
+
+func probeVideo(ctx context.Context, e GCSEvent) (map[string]interface{}, error) {
+	// use FFmpeg to get details about video
+	// Provide an empty string to use default FFmpeg path
+	bucket := storageClient.Bucket(e.Bucket)
+
+	// Open file for reading
+	r, err := bucket.Object(e.Name).NewReader(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("NewReader: %s", err)
+	}
+
+	fn := path.Join(os.TempDir(), path.Base(e.Name))
+
+	// Create and open new file
+	fo, err := os.Create(fn)
+	if err != nil {
+		return nil, fmt.Errorf("os.Create: %s", err)
+	}
+	// Copy file over
+	size, err := io.Copy(fo, r)
+	if err != nil {
+		return nil, fmt.Errorf("io.Copy: %s", err)
+	}
+	log.Printf("Written: %d", size)
+
+	return fluentffmpeg.Probe(fn)
+
 }
