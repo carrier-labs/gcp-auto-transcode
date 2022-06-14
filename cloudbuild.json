@@ -7,7 +7,7 @@
                 "functions",
                 "deploy",
                 "auto-transcode",
-                "--region=us-central1",
+                "--region=europe-west2",
                 "--source=.",
                 "--entry-point=WatchStorageBucket",
                 "--trigger-resource=client_1165_red-bull_signage_store",
