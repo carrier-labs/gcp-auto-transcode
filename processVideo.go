@@ -145,7 +145,8 @@ func jobConfigWithoutAudio() *transcoderpb.JobConfig {
 					VideoStream: &transcoderpb.VideoStream{
 						CodecSettings: &transcoderpb.VideoStream_H265{
 							H265: &transcoderpb.VideoStream_H265CodecSettings{
-								BitrateBps:   60000000, // 60Mbps
+								// BitrateBps:   60000000, // 60Mbps
+								BitrateBps:   35000000, // 35Mbps
 								FrameRate:    60,
 								HeightPixels: 2160,
 								WidthPixels:  3840,
