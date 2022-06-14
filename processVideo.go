@@ -18,11 +18,11 @@ func processVideo(ctx context.Context, e GCSEvent) error {
 
 	log.Printf("Processing Video: %s", e.Name)
 
-	data, err := probeVideo(ctx, e)
+	ffprobe, err := probeVideo(ctx, e)
 	if err != nil {
 		log.Printf("ffmpeg probe error: %s", err)
 	}
-	log.Printf("ffprobe: %+v", data)
+	log.Printf("ffprobe: %+v", ffprobe)
 
 	// Move video
 	ogFile, err := moveFile(ctx, e)
@@ -46,6 +46,11 @@ func processVideo(ctx context.Context, e GCSEvent) error {
 		SizeMB: e.SizeMB,
 		Mime:   e.ContentType,
 	}
+
+	// Add additional data
+	// if st, ok := ffprobe["streams"]; ok {
+
+	// }
 
 	_, err = firestoreClient.Collection("video").Doc(entry.MD5).Set(ctx, entry)
 

@@ -79,7 +79,6 @@ func init() {
 	if err != nil {
 		log.Fatalf("%s", err)
 	}
-
 }
 
 // WatchStorageBucket consumes a(ny) GCS event.
