@@ -38,7 +38,7 @@ func processVideo(ctx context.Context, e GCSEvent) error {
 		Mime:   e.ContentType,
 	}
 
-	_, err = firestoreClient.Collection("video").Doc(fmt.Sprintf("%x", e.MD5Hash)).Set(ctx, entry)
+	_, err = firestoreClient.Collection("video").Doc(entry.MD5).Set(ctx, entry)
 
 	if err != nil {
 		return err

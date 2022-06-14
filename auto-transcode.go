@@ -129,7 +129,7 @@ func moveFile(ctx context.Context, e GCSEvent) (string, error) {
 	// Get Src File
 	src := bucket.Object(e.Name)
 
-	dest := bucket.Object(fmt.Sprintf("media/%s/%s/og-%s", getContentType(e.ContentType), e.MD5Hash, path.Base(e.Name)))
+	dest := bucket.Object(fmt.Sprintf("media/%s/%x/og-%s", getContentType(e.ContentType), e.MD5Hash, path.Base(e.Name)))
 	if _, err := dest.CopierFrom(src).Run(ctx); err != nil {
 		return "", fmt.Errorf("Object(%q).CopierFrom(%q).Run: %v", dest.ObjectName(), src.ObjectName(), err)
 	}
