@@ -12,6 +12,7 @@ import (
 	"time"
 
 	computemd "cloud.google.com/go/compute/metadata"
+	"cloud.google.com/go/firestore"
 	"cloud.google.com/go/storage"
 	firebase "firebase.google.com/go"
 )
@@ -36,7 +37,7 @@ type GCSEvent struct {
 	StorageClass            string                 `json:"storageClass"`
 	TimeStorageClassUpdated time.Time              `json:"timeStorageClassUpdated"`
 	SizeString              string                 `json:"size"`
-	MD5Hash                 string                 `json:"md5Hash"`
+	MD5Hash                 []byte                 `json:"md5Hash"`
 	MediaLink               string                 `json:"mediaLink"`
 	ContentEncoding         string                 `json:"contentEncoding"`
 	ContentDisposition      string                 `json:"contentDisposition"`
@@ -55,47 +56,51 @@ type GCSEvent struct {
 	SizeMB        float64
 }
 
-type key int
+var storageClient *storage.Client
+var firestoreClient *firestore.Client
 
-const (
-	keyStorageBucket key = iota
-	keyFirestoreClient
-)
+func init() {
+	ctx := context.Background()
+	var err error
+
+	// Create Storage Client and add to context
+	storageClient, err = storage.NewClient(ctx)
+	if err != nil {
+		log.Fatalf("%s", err)
+	}
+
+	// Open connection to Firestore
+	app, err := firebase.NewApp(ctx, &firebase.Config{ProjectID: ProjectId})
+	if err != nil {
+		log.Fatalf("%s", err)
+	}
+
+	firestoreClient, err = app.Firestore(ctx)
+	if err != nil {
+		log.Fatalf("%s", err)
+	}
+
+}
 
 // WatchStorageBucket consumes a(ny) GCS event.
 // Configure to watch google.storage.object.finalize
 func WatchStorageBucket(ctx context.Context, e GCSEvent) error {
 
+	log.Printf("Processing: %s", e.Name)
+
 	// Check file is in Uploads folder
 	if match, _ := (path.Match("media/upload/*.*", e.Name)); !match {
+		log.Printf("Not an upload: Exit")
 		return nil
 	}
+
+	log.Printf("MIME:       %s", e.ContentType)
+	log.Printf("MD5Hash:    %x", e.MD5Hash)
 
 	// Some maths on file size
 	e.SizeB, _ = strconv.Atoi(e.SizeString)
 	e.SizeMB = float64(e.SizeB) / (1 << 20)
 	e.SizeMB = math.Round(e.SizeMB*100) / 100
-
-	// Create Storage Client and add to context
-	storageClient, err := storage.NewClient(ctx)
-	if err != nil {
-		return err
-	}
-	ctx = context.WithValue(ctx, keyStorageBucket, storageClient.Bucket(e.Bucket))
-
-	// Open connection to Firestore
-	conf := &firebase.Config{ProjectID: ProjectId}
-	app, err := firebase.NewApp(ctx, conf)
-	if err != nil {
-		return err
-	}
-
-	firestoreClient, err := app.Firestore(ctx)
-	if err != nil {
-		return err
-	}
-	defer firestoreClient.Close()
-	ctx = context.WithValue(ctx, keyFirestoreClient, firestoreClient)
 
 	// TODO: Get type of file from video/mp4 tag
 	switch getContentType(e.ContentType) {
@@ -119,7 +124,7 @@ func getContentType(mime string) (Type string) {
 func moveFile(ctx context.Context, e GCSEvent) (string, error) {
 
 	// Get Storage Bucket Handle
-	bucket := ctx.Value(keyStorageBucket).(*storage.BucketHandle)
+	bucket := storageClient.Bucket(e.Bucket)
 
 	// Get Src File
 	src := bucket.Object(e.Name)

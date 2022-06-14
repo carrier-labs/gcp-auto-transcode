@@ -7,7 +7,6 @@ import (
 	"path"
 	"strings"
 
-	"cloud.google.com/go/firestore"
 	transcoder "cloud.google.com/go/video/transcoder/apiv1"
 	transcoderpb "google.golang.org/genproto/googleapis/cloud/video/transcoder/v1"
 )
@@ -22,9 +21,6 @@ func processVideo(ctx context.Context, e GCSEvent) error {
 		return err
 	}
 
-	// Update Firestore
-	fs := ctx.Value(keyFirestoreClient).(*firestore.Client)
-
 	// Populate Firebase
 	type dbEntry struct {
 		Name   string  `firestore:"og-name"`
@@ -36,13 +32,13 @@ func processVideo(ctx context.Context, e GCSEvent) error {
 
 	entry := dbEntry{
 		Name:   path.Base(e.Name),
-		MD5:    e.MD5Hash,
+		MD5:    fmt.Sprintf("%x", e.MD5Hash),
 		SizeB:  e.SizeB,
 		SizeMB: e.SizeMB,
 		Mime:   e.ContentType,
 	}
 
-	_, err = fs.Collection("video").Doc(e.MD5Hash).Set(ctx, entry)
+	_, err = firestoreClient.Collection("video").Doc(fmt.Sprintf("%x", e.MD5Hash)).Set(ctx, entry)
 
 	if err != nil {
 		return err
