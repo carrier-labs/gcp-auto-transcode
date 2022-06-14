@@ -61,7 +61,7 @@ func processVideo(ctx context.Context, e GCSEvent) error {
 	// Get Transcoder API Client
 	c, err := transcoder.NewClient(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("trascode client: %s", err)
 	}
 	defer c.Close()
 
@@ -77,7 +77,7 @@ func processVideo(ctx context.Context, e GCSEvent) error {
 		},
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("create trans job 1: %s", err)
 	}
 
 	log.Printf("Video Transcode Job: %s", resp.GetName())
@@ -94,7 +94,7 @@ func processVideo(ctx context.Context, e GCSEvent) error {
 		},
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("create trans job 2: %s", err)
 	}
 
 	log.Printf("Video+Audio Transcode Job: %s", resp.GetName())
