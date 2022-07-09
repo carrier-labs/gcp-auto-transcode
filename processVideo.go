@@ -3,14 +3,11 @@ package cloudfunctiontranscode
 import (
 	"context"
 	"fmt"
-	"io"
 	"log"
-	"os"
 	"path"
 	"strings"
 
 	transcoder "cloud.google.com/go/video/transcoder/apiv1"
-	fluentffmpeg "github.com/modfy/fluent-ffmpeg"
 	transcoderpb "google.golang.org/genproto/googleapis/cloud/video/transcoder/v1"
 )
 
@@ -18,7 +15,7 @@ func processVideo(ctx context.Context, e GCSEvent) error {
 
 	log.Printf("Processing Video: %s", e.Name)
 
-	ffprobe, err := probeVideo(ctx, e)
+	ffprobe, err := probeVideoFromGCSEvent(ctx, e)
 	if err != nil {
 		log.Printf("ffmpeg probe error: %s", err)
 	}
@@ -233,33 +230,4 @@ func jobConfigWithAudio() *transcoderpb.JobConfig {
 	}
 
 	return config
-}
-
-func probeVideo(ctx context.Context, e GCSEvent) (map[string]interface{}, error) {
-	// use FFmpeg to get details about video
-	// Provide an empty string to use default FFmpeg path
-	bucket := storageClient.Bucket(e.Bucket)
-
-	// Open file for reading
-	r, err := bucket.Object(e.Name).NewReader(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("NewReader: %s", err)
-	}
-
-	fn := path.Join(os.TempDir(), path.Base(e.Name))
-
-	// Create and open new file
-	fo, err := os.Create(fn)
-	if err != nil {
-		return nil, fmt.Errorf("os.Create: %s", err)
-	}
-	// Copy file over
-	size, err := io.Copy(fo, r)
-	if err != nil {
-		return nil, fmt.Errorf("io.Copy: %s", err)
-	}
-	log.Printf("Written: %d", size)
-
-	return fluentffmpeg.Probe(fn)
-
 }
