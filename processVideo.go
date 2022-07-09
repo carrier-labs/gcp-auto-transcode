@@ -15,11 +15,13 @@ func processVideo(ctx context.Context, e GCSEvent) error {
 
 	log.Printf("Processing Video: %s", e.Name)
 
-	ffprobe, err := probeVideoFromGCSEvent(ctx, e)
+	probeData, err := probeVideoFromGCSEvent(ctx, e)
 	if err != nil {
 		log.Printf("ffmpeg probe error: %s", err)
 	}
-	log.Printf("ffprobe: %+v", ffprobe)
+	log.Printf("ffprobe Success")
+	log.Printf("ffprobe: %+v", probeData)
+	return nil
 
 	// Move video
 	ogFile, err := moveFile(ctx, e)
