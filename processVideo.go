@@ -2,234 +2,89 @@ package cloudfunctiontranscode
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"path"
-	"strings"
+	"strconv"
 
-	transcoder "cloud.google.com/go/video/transcoder/apiv1"
-	transcoderpb "google.golang.org/genproto/googleapis/cloud/video/transcoder/v1"
+	"cloud.google.com/go/pubsub"
 )
 
-func processVideo(ctx context.Context, e GCSEvent) error {
+// processVideoFile processes a video file uploaded to GCS
+func processVideoFile(ctx context.Context, e GCSEvent) error {
 
 	log.Printf("Processing Video: %s", e.Name)
 
+	// use ffprobe to get the video's metadata
 	probeData, err := probeVideoFromGCSEvent(ctx, e)
 	if err != nil {
 		log.Printf("ffmpeg probe error: %s", err)
 	}
-	log.Printf("ffprobe Success")
-	log.Printf("ffprobe: %+v", probeData)
-	return nil
+	log.Printf("ffmpeg probe success: %+v", probeData)
 
-	// Move video
-	ogFile, err := moveFile(ctx, e)
-	if err != nil {
-		return fmt.Errorf("move file: %s", err)
-	}
-
-	// Populate Firebase
-	type dbEntry struct {
-		Name   string  `firestore:"og-name"`
-		MD5    string  `firestore:"md5"`
-		Mime   string  `firestore:"mime"`
-		SizeB  int     `firestore:"size-B"`
-		SizeMB float64 `firestore:"size-MB"`
-	}
-
+	// create empty database entry
 	entry := dbEntry{
-		Name:   path.Base(e.Name),
-		MD5:    fmt.Sprintf("%x", e.MD5Hash),
-		SizeB:  e.SizeB,
-		SizeMB: e.SizeMB,
-		Mime:   e.ContentType,
+		Name:        path.Base(e.Name),
+		MD5:         fmt.Sprintf("%x", e.MD5Hash),
+		ContentType: e.ContentType,
+		ProbeData:   probeData,
+		MetaData: &dbMetaData{
+			Width:  probeData.FirstVideoStream().Width,
+			Height: probeData.FirstVideoStream().Height,
+			SizeB:  e.getSizeB(),
+			SizeMB: e.getSizeMB(),
+		},
+		TranscodeStatus: "Request Sent",
 	}
 
-	// Add additional data
-	// if st, ok := ffprobe["streams"]; ok {
+	// convert duration string to seconds float
+	duration, err := strconv.ParseFloat(probeData.FirstVideoStream().Duration, 64)
+	if err != nil {
+		log.Printf("Error parsing duration: %s", err)
+	}
 
-	// }
+	// Set length from duration in probe data
+	entry.MetaData.Length = duration
 
+	// create msgTranscodeVideo to publish to pubsub
+	msg := msgTranscodeReq{
+		MD5:      entry.MD5,
+		FileName: e.Name,                              // gs filename
+		HasAudio: probeData.FirstAudioStream() != nil, // check if audio stream exists
+		Height:   probeData.FirstVideoStream().Height, // get video height
+		Width:    probeData.FirstVideoStream().Width,  // get video width
+	}
+
+	// convert struct to bytes
+	bytes, err := json.Marshal(msg)
+	if err != nil {
+		return fmt.Errorf("json marshal: %s", err)
+	}
+
+	// send a new pubsub message
+	ServerId, err := pubsubClient.Topic("transcode-queue").Publish(ctx, &pubsub.Message{Data: bytes}).Get(ctx)
+	if err != nil {
+		return fmt.Errorf("pubsub publish: %s", err)
+	}
+
+	// Log the server ID of the published message.
+	log.Printf("Published message ID: %s", ServerId)
+
+	// write new file to database
 	_, err = firestoreClient.Collection("video").Doc(entry.MD5).Set(ctx, entry)
-
 	if err != nil {
 		return fmt.Errorf("firebase set: %s", err)
 	}
 
-	// Get Transcoder API Client
-	c, err := transcoder.NewClient(ctx)
-	if err != nil {
-		return fmt.Errorf("trascode client: %s", err)
-	}
-	defer c.Close()
-
-	// Request Transcoding Job (without Audio)
-	resp, err := c.CreateJob(ctx, &transcoderpb.CreateJobRequest{
-		Parent: fmt.Sprintf("projects/%s/locations/%s", ProjectId, "europe-west4"),
-		Job: &transcoderpb.Job{
-			InputUri:  ogFile,
-			OutputUri: strings.TrimSuffix(ogFile, path.Base(ogFile)),
-			JobConfig: &transcoderpb.Job_Config{
-				Config: jobConfigWithoutAudio(),
-			},
-		},
-	})
-	if err != nil {
-		return fmt.Errorf("create trans job 1: %s", err)
-	}
-
-	log.Printf("Video Transcode Job: %s", resp.GetName())
-
-	// Request Transcoding Job (with Audio)
-	resp, err = c.CreateJob(ctx, &transcoderpb.CreateJobRequest{
-		Parent: fmt.Sprintf("projects/%s/locations/%s", ProjectId, "europe-west4"),
-		Job: &transcoderpb.Job{
-			InputUri:  ogFile,
-			OutputUri: strings.TrimSuffix(ogFile, path.Base(ogFile)),
-			JobConfig: &transcoderpb.Job_Config{
-				Config: jobConfigWithAudio(),
-			},
-		},
-	})
-	if err != nil {
-		return fmt.Errorf("create trans job 2: %s", err)
-	}
-
-	log.Printf("Video+Audio Transcode Job: %s", resp.GetName())
-
 	return nil
 }
 
-func jobConfigWithoutAudio() *transcoderpb.JobConfig {
-	return &transcoderpb.JobConfig{
-		PubsubDestination: &transcoderpb.PubsubDestination{
-			Topic: fmt.Sprintf("projects/%s/topics/%s", ProjectId, "transcode-result"),
-		},
-		ElementaryStreams: []*transcoderpb.ElementaryStream{
-			{
-				Key: "video_stream0",
-				ElementaryStream: &transcoderpb.ElementaryStream_VideoStream{
-					VideoStream: &transcoderpb.VideoStream{
-						CodecSettings: &transcoderpb.VideoStream_H264{
-							H264: &transcoderpb.VideoStream_H264CodecSettings{
-								BitrateBps:   1500000, // 1.5Mbps
-								FrameRate:    60,
-								HeightPixels: 360,
-								WidthPixels:  640,
-							},
-						},
-					},
-				},
-			},
-			{
-				Key: "video_stream1",
-				ElementaryStream: &transcoderpb.ElementaryStream_VideoStream{
-					VideoStream: &transcoderpb.VideoStream{
-						CodecSettings: &transcoderpb.VideoStream_H265{
-							H265: &transcoderpb.VideoStream_H265CodecSettings{
-								BitrateBps:   7500000, // 7.5Mbps
-								FrameRate:    60,
-								HeightPixels: 720,
-								WidthPixels:  1280,
-							},
-						},
-					},
-				},
-			},
-			{
-				Key: "video_stream2",
-				ElementaryStream: &transcoderpb.ElementaryStream_VideoStream{
-					VideoStream: &transcoderpb.VideoStream{
-						CodecSettings: &transcoderpb.VideoStream_H265{
-							H265: &transcoderpb.VideoStream_H265CodecSettings{
-								BitrateBps:   12000000, // 12Mbps
-								FrameRate:    60,
-								HeightPixels: 1080,
-								WidthPixels:  1920,
-							},
-						},
-					},
-				},
-			},
-			{
-				Key: "video_stream3",
-				ElementaryStream: &transcoderpb.ElementaryStream_VideoStream{
-					VideoStream: &transcoderpb.VideoStream{
-						CodecSettings: &transcoderpb.VideoStream_H265{
-							H265: &transcoderpb.VideoStream_H265CodecSettings{
-								// BitrateBps:   60000000, // 60Mbps
-								BitrateBps:   35000000, // 35Mbps
-								FrameRate:    60,
-								HeightPixels: 2160,
-								WidthPixels:  3840,
-							},
-						},
-					},
-				},
-			},
-		},
-		MuxStreams: []*transcoderpb.MuxStream{
-			{
-				Key:               "h264-360p",
-				Container:         "mp4",
-				ElementaryStreams: []string{"video_stream0"},
-			},
-			{
-				Key:               "h265-720p",
-				Container:         "mp4",
-				ElementaryStreams: []string{"video_stream1"},
-			},
-			{
-				Key:               "h265-1080p",
-				Container:         "mp4",
-				ElementaryStreams: []string{"video_stream2"},
-			},
-			{
-				Key:               "h265-2160p",
-				Container:         "mp4",
-				ElementaryStreams: []string{"video_stream3"},
-			},
-		},
-	}
-}
-
-func jobConfigWithAudio() *transcoderpb.JobConfig {
-
-	config := jobConfigWithoutAudio()
-
-	config.ElementaryStreams = append(config.ElementaryStreams, &transcoderpb.ElementaryStream{
-		Key: "audio_stream0",
-		ElementaryStream: &transcoderpb.ElementaryStream_AudioStream{
-			AudioStream: &transcoderpb.AudioStream{
-				Codec:      "aac",
-				BitrateBps: 64000,
-			},
-		},
-	})
-
-	config.MuxStreams = []*transcoderpb.MuxStream{
-		{
-			Key:               "h264-360p-audio",
-			Container:         "mp4",
-			ElementaryStreams: []string{"video_stream0", "audio_stream0"},
-		},
-		{
-			Key:               "h265-720p-audio",
-			Container:         "mp4",
-			ElementaryStreams: []string{"video_stream1", "audio_stream0"},
-		},
-		{
-			Key:               "h265-1080p-audio",
-			Container:         "mp4",
-			ElementaryStreams: []string{"video_stream2", "audio_stream0"},
-		},
-		{
-			Key:               "h265-2160p-audio",
-			Container:         "mp4",
-			ElementaryStreams: []string{"video_stream3", "audio_stream0"},
-		},
-	}
-
-	return config
+// msgTranscodeReq holds details for requesting Transcode API Jobs on this file
+type msgTranscodeReq struct {
+	MD5      string `json:"md5"`       //
+	FileName string `json:"file_name"` // GCS file name
+	HasAudio bool   `json:"has_audio"` // has audio
+	Height   int    `json:"height"`    // Height of video
+	Width    int    `json:"width"`     // Width of video
 }

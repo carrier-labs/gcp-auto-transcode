@@ -5,11 +5,10 @@ import (
 	"log"
 )
 
-func processImage(ctx context.Context, e GCSEvent) error {
+func processImageFile(ctx context.Context, e GCSEvent) error {
 
 	log.Printf("Processing Image: %s", e.Name)
-
-	moveFile(ctx, e)
+	log.Printf("ToDo: Stuff to image")
 
 	return nil
 }

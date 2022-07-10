@@ -6,12 +6,40 @@
                 "gcloud",
                 "functions",
                 "deploy",
-                "auto-transcode",
+                "watch-storage-bucket",
                 "--region=europe-west2",
                 "--source=.",
                 "--entry-point=WatchStorageBucket",
                 "--trigger-resource=client_1165_red-bull_signage_store",
                 "--trigger-event=google.storage.object.finalize",
+                "--runtime=go116"
+            ]
+        },
+        {
+            "name": "gcr.io/google.com/cloudsdktool/cloud-sdk",
+            "args": [
+                "gcloud",
+                "functions",
+                "deploy",
+                "watch-transcoder-queue",
+                "--region=us-central1",
+                "--source=.",
+                "--entry-point=SubTranscodeQueue",
+                "--trigger-topic=transcode-queue",
+                "--runtime=go116"
+            ]
+        },
+        {
+            "name": "gcr.io/google.com/cloudsdktool/cloud-sdk",
+            "args": [
+                "gcloud",
+                "functions",
+                "deploy",
+                "watch-transcoder-queue",
+                "--region=us-central1",
+                "--source=.",
+                "--entry-point=SubTranscodeResult",
+                "--trigger-topic=transcode-result",
                 "--runtime=go116"
             ]
         }

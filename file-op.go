@@ -7,22 +7,36 @@ import (
 	"path"
 )
 
-func moveFile(ctx context.Context, e GCSEvent) (string, error) {
+func renameFile(ctx context.Context, e GCSEvent) error {
 
 	// Get Storage Bucket Handle
 	bucket := storageClient.Bucket(e.Bucket)
 
-	// Get Src File
+	// Get Src File Handle
 	src := bucket.Object(e.Name)
 
-	dest := bucket.Object(fmt.Sprintf("media/%s/%x/og-%s", getContentType(e.ContentType), e.MD5Hash, path.Base(e.Name)))
-	if _, err := dest.CopierFrom(src).Run(ctx); err != nil {
-		return "", fmt.Errorf("Object(%q).CopierFrom(%q).Run: %v", dest.ObjectName(), src.ObjectName(), err)
-	}
-	if err := src.Delete(ctx); err != nil {
-		return "", fmt.Errorf("Object(%q).Delete: %v", src.ObjectName(), err)
-	}
-	log.Printf("File %v moved to %v\n", src.ObjectName(), dest.ObjectName())
+	// Create dst file name
+	dstFilename := fmt.Sprintf("media/%s/%x/og-%s", e.getContentBaseType(), e.MD5Hash, path.Base(e.Name))
 
-	return fmt.Sprintf("gs://%s/%s", dest.BucketName(), dest.ObjectName()), nil
+	// Get Dst File Handle
+	dst := bucket.Object(dstFilename)
+
+	// log out
+	log.Printf("Moving: %v to %v\n", src.ObjectName(), dst.ObjectName())
+
+	// Create new file
+	if _, err := dst.CopierFrom(src).Run(ctx); err != nil {
+		return fmt.Errorf("failed Object(%q).CopierFrom(%q).Run: %v", dst.ObjectName(), src.ObjectName(), err)
+	}
+
+	// Delete src file
+	if err := src.Delete(ctx); err != nil {
+		return fmt.Errorf("failed Object(%q).Delete: %v", src.ObjectName(), err)
+	}
+
+	// Log move result
+	log.Printf("success: Moved %v to %v\n", src.ObjectName(), dst.ObjectName())
+
+	// Return new filename
+	return nil
 }

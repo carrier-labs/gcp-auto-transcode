@@ -1,22 +1,11 @@
-// Package helloworld provides a set of Cloud Functions samples.
 package cloudfunctiontranscode
 
 import (
-	"context"
-	"log"
 	"math"
-	"path"
 	"strconv"
 	"strings"
 	"time"
-
-	computemd "cloud.google.com/go/compute/metadata"
-	"cloud.google.com/go/firestore"
-	"cloud.google.com/go/storage"
-	firebase "firebase.google.com/go"
 )
-
-var ProjectId, _ = computemd.ProjectID()
 
 // GCSEvent is the payload of a GCS event.
 type GCSEvent struct {
@@ -55,66 +44,25 @@ type GCSEvent struct {
 	SizeMB        float64
 }
 
-var storageClient *storage.Client
-var firestoreClient *firestore.Client
-
-func init() {
-	ctx := context.Background()
-	var err error
-
-	// Create Storage Client and add to context
-	storageClient, err = storage.NewClient(ctx)
-	if err != nil {
-		log.Fatalf("%s", err)
-	}
-
-	// Open connection to Firestore
-	app, err := firebase.NewApp(ctx, &firebase.Config{ProjectID: ProjectId})
-	if err != nil {
-		log.Fatalf("%s", err)
-	}
-
-	firestoreClient, err = app.Firestore(ctx)
-	if err != nil {
-		log.Fatalf("%s", err)
-	}
-}
-
-// WatchStorageBucket consumes a(ny) GCS event.
-// Configure to watch google.storage.object.finalize
-func WatchStorageBucket(ctx context.Context, e GCSEvent) error {
-
-	log.Printf("Processing: %s", e.Name)
-
-	// Check file is in Uploads folder
-	if match, _ := (path.Match("media/upload/*.*", e.Name)); !match {
-		log.Printf("Not an upload: Exit")
-		return nil
-	}
-
-	log.Printf("MIME:       %s", e.ContentType)
-	log.Printf("MD5Hash:    %x", e.MD5Hash)
-
-	// Some maths on file size
-	e.SizeB, _ = strconv.Atoi(e.SizeString)
-	e.SizeMB = float64(e.SizeB) / (1 << 20)
-	e.SizeMB = math.Round(e.SizeMB*100) / 100
-
-	// TODO: Get type of file from video/mp4 tag
-	switch getContentType(e.ContentType) {
-	case "video":
-		return processVideo(ctx, e)
-	case "image":
-		return processImage(ctx, e)
-	}
-
-	return nil
-}
-
-func getContentType(mime string) (Type string) {
-	s := strings.Split(mime, "/")
+func (e *GCSEvent) getContentBaseType() (Type string) {
+	s := strings.Split(e.ContentType, "/")
 	if len(s) > 0 {
 		Type = s[0]
 	}
+	return
+}
+
+// getSizeB returns the size in bytes of the file.
+func (e *GCSEvent) getSizeB() (SizeB int) {
+	if e.SizeString != "" {
+		SizeB, _ = strconv.Atoi(e.SizeString)
+	}
+	return
+}
+
+// get SizeMB returns the size in megabytes of the file rounded to 2 decimal places.
+func (e *GCSEvent) getSizeMB() (SizeMB float64) {
+	SizeMB = float64(e.getSizeB()) / (1 << 20)
+	SizeMB = math.Round(SizeMB*100) / 100
 	return
 }

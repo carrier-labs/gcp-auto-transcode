@@ -1,21 +1,28 @@
 package main
 
 import (
+	"context"
 	"log"
-	"os"
 
-	// Blank-import the function package so the init() runs
-	"github.com/GoogleCloudPlatform/functions-framework-go/funcframework"
-	_ "github.com/carrier-labs/gcp-auto-transcode"
+	"../cloudfunctiontranscode"
 )
 
 func main() {
-	// Use PORT environment variable, or default to 8080.
-	port := "8080"
-	if envPort := os.Getenv("PORT"); envPort != "" {
-		port = envPort
+
+	// Get a file feom Google Cloud Storage
+	ctx := context.Background()
+	var err error
+
+	// Set filename variables
+	bn := "client_1165_red-bull_signage_store"
+	fn := "media/video/ffcb0850ed98bf92346e0a77971d3235/og-MI202108090215_h264_720p.mp4"
+
+	// Request probe
+	d, err := cloudfunctiontranscode.ProbeVideoInGCS(ctx, bn, fn)
+	//  ProbeVideoInGCS(ctx, bn, fn)
+	if err != nil {
+		panic(err)
 	}
-	if err := funcframework.Start(port); err != nil {
-		log.Fatalf("funcframework.Start: %v\n", err)
-	}
+	// output result to console
+	log.Printf("%+v", d)
 }
