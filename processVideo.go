@@ -11,6 +11,15 @@ import (
 	"cloud.google.com/go/pubsub"
 )
 
+// msgTranscodeReq holds details for requesting Transcode API Jobs on this file
+type msgTranscodeReq struct {
+	MD5      string `json:"md5"`       //
+	FileName string `json:"file_name"` // GCS file name
+	HasAudio bool   `json:"has_audio"` // has audio
+	Height   int    `json:"height"`    // Height of video
+	Width    int    `json:"width"`     // Width of video
+}
+
 // processVideoFile processes a video file uploaded to GCS
 func processVideoFile(ctx context.Context, e GCSEvent) error {
 
@@ -24,7 +33,7 @@ func processVideoFile(ctx context.Context, e GCSEvent) error {
 	log.Printf("ffmpeg probe success: %+v", probeData)
 
 	// create empty database entry
-	entry := dbEntry{
+	entry := &dbEntry{
 		Name:        path.Base(e.Name),
 		MD5:         fmt.Sprintf("%x", e.MD5Hash),
 		ContentType: e.ContentType,
@@ -48,7 +57,7 @@ func processVideoFile(ctx context.Context, e GCSEvent) error {
 	entry.MetaData.Length = duration
 
 	// create msgTranscodeVideo to publish to pubsub
-	msg := msgTranscodeReq{
+	msg := &msgTranscodeReq{
 		MD5:      entry.MD5,
 		FileName: e.Name,                              // gs filename
 		HasAudio: probeData.FirstAudioStream() != nil, // check if audio stream exists
@@ -78,13 +87,4 @@ func processVideoFile(ctx context.Context, e GCSEvent) error {
 	}
 
 	return nil
-}
-
-// msgTranscodeReq holds details for requesting Transcode API Jobs on this file
-type msgTranscodeReq struct {
-	MD5      string `json:"md5"`       //
-	FileName string `json:"file_name"` // GCS file name
-	HasAudio bool   `json:"has_audio"` // has audio
-	Height   int    `json:"height"`    // Height of video
-	Width    int    `json:"width"`     // Width of video
 }
