@@ -32,6 +32,12 @@ func processVideoFile(ctx context.Context, e GCSEvent) error {
 	}
 	log.Printf("ffmpeg probe success: %+v", probeData)
 
+	// convert duration string to seconds float
+	duration, err := strconv.ParseFloat(probeData.FirstVideoStream().Duration, 64)
+	if err != nil {
+		log.Printf("Error parsing duration: %s", err)
+	}
+
 	// create empty database entry
 	entry := &dbEntry{
 		Name:        path.Base(e.Name),
@@ -43,17 +49,9 @@ func processVideoFile(ctx context.Context, e GCSEvent) error {
 		// 	Height: probeData.FirstVideoStream().Height,
 		// 	SizeB:  e.getSizeB(),
 		// 	SizeMB: e.getSizeMB(),
+		// 	Length: duration,
 		// },
 	}
-
-	// convert duration string to seconds float
-	duration, err := strconv.ParseFloat(probeData.FirstVideoStream().Duration, 64)
-	if err != nil {
-		log.Printf("Error parsing duration: %s", err)
-	}
-
-	// Set length from duration in probe data
-	entry.MetaData.Length = duration
 
 	// create msgTranscodeVideo to publish to pubsub
 	msg := &msgTranscodeReq{
