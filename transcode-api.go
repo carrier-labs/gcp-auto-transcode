@@ -10,7 +10,6 @@ import (
 
 	"cloud.google.com/go/firestore"
 	"cloud.google.com/go/pubsub"
-	"google.golang.org/api/iterator"
 	transcoderpb "google.golang.org/genproto/googleapis/cloud/video/transcoder/v1"
 )
 
@@ -20,7 +19,6 @@ var MaxTranscodeJobs = 20
 func SubTranscodeQueue(ctx context.Context, m pubsub.Message) error {
 
 	log.Printf("SubTranscodeQueue: Called")
-	log.Printf("pubSub.Message: %+v", m)
 
 	// Unmarshal the message into a msgTranscodeReq
 	var msg msgTranscodeReq
@@ -29,17 +27,8 @@ func SubTranscodeQueue(ctx context.Context, m pubsub.Message) error {
 		return fmt.Errorf("json unmarshal: %s", err)
 	}
 
-	// Check there are job slots available for transcoding this video
-	jobsCount, err := getTranscodeJobsCount(ctx)
-	if err != nil {
-		return fmt.Errorf("get transcode jobs count: %s", err)
-	}
-	log.Printf("Transcoder Jobs Count: %d/%d", jobsCount, MaxTranscodeJobs)
-
-	// If there is Audio and there are more than 18 jobs, don't add this job yet
-	if jobsCount >= MaxTranscodeJobs {
-		return fmt.Errorf("too many jobs: %d of %d", jobsCount, MaxTranscodeJobs)
-	}
+	// Log the PubSub Data
+	log.Printf("PubSub Data: %+v", msg)
 
 	// Set job config base setup
 	jobConfig := jobConfigVideoOnly()
@@ -74,7 +63,7 @@ func SubTranscodeQueue(ctx context.Context, m pubsub.Message) error {
 		},
 		{
 			Path:  "transcode-status",
-			Value: "submitted",
+			Value: "Processing",
 		},
 	})
 
@@ -83,30 +72,4 @@ func SubTranscodeQueue(ctx context.Context, m pubsub.Message) error {
 	}
 
 	return nil
-}
-
-// getTranscodeJobsCount returns the number of jobs currently in the Transcoder API
-func getTranscodeJobsCount(ctx context.Context) (int, error) {
-
-	log.Printf("Getting Transcoder Jobs Count")
-
-	// Get iterator for all jobs
-	it := transcoderClient.ListJobs(ctx, &transcoderpb.ListJobsRequest{
-		Parent: fmt.Sprintf("projects/%s/locations/%s", ProjectId, "europe-west4"),
-	})
-
-	// Count the number of jobs
-	count := 0
-	for {
-		_, err := it.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			return 0, fmt.Errorf("list jobs: %s", err)
-		}
-		count++
-	}
-
-	return count, nil
 }
