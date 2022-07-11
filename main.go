@@ -88,8 +88,14 @@ func WatchStorageBucket(ctx context.Context, e GCSEvent) error {
 
 	// Match renamed video file
 	if match, _ := (path.Match("media/video/*/og-*.*", e.Name)); match {
-		log.Printf("Match: New renamed video file")
-		return processVideoFile(ctx, e)
+		log.Printf("Match: Renamed og-video file")
+		return processOriginalVideoFile(ctx, e)
+	}
+
+	// Match renamed video file
+	if match, _ := (path.Match("media/video/*/*.*", e.Name)); match {
+		log.Printf("Match: Transcoded video file")
+		return processTranscodedVideoFile(ctx, e)
 	}
 
 	// Match renamed image file
@@ -97,6 +103,9 @@ func WatchStorageBucket(ctx context.Context, e GCSEvent) error {
 		log.Printf("Match: New renamed image file")
 		return processImageFile(ctx, e)
 	}
+
+	// No Match
+	log.Printf("Ignoring: File not matched")
 
 	return nil
 }

@@ -2,12 +2,12 @@ package cloudfunctiontranscode
 
 // dbEntry firebase database entry
 type dbEntry struct {
-	Name            string     `firestore:"og-name"`
-	MD5             string     `firestore:"md5"`
-	ContentType     string     `firestore:"content-type"` // mime type
-	MetaData        dbMetaData `firestore:"metadata,omitempty"`
-	TranscodeJob    string     `firestore:"transcode-job"`    // Transcode Job ID
-	TranscodeStatus string     `firestore:"transcode-status"` // Transcode Job Status
+	Title     string     `firestore:"title"`
+	MetaData  dbMetaData `firestore:"metadata,omitempty"`
+	Transcode struct {
+		Job    string `firestore:"jobId"`  // Transcode Job ID
+		Status string `firestore:"status"` // Transcode Job Status
+	} `firestore:"transcode-api"`
 }
 
 // dbMetaData struct to hold image/video metadata
@@ -21,4 +21,7 @@ type dbMetaData struct {
 	AudioCodec   string  `firestore:"audio-codec"`    // Audio codec
 	BitRate      string  `firestore:"bitrate"`        // Bitrate in bits/second
 	FrameRateAvg string  `firestore:"frame-rate-avg"` // Frame rate in frames/second
+	OgFile       string  `firestore:"og-name"`
+	MD5          string  `firestore:"md5"`
+	ContentType  string  `firestore:"content-type"` // mime type
 }

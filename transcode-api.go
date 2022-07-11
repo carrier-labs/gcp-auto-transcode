@@ -31,7 +31,7 @@ func SubTranscodeQueue(ctx context.Context, m pubsub.Message) error {
 	log.Printf("PubSub Data: %+v", msg)
 
 	// Set job config base setup
-	jobConfig := jobConfigVideoOnly()
+	jobConfig := jobConfigVideoOnly(msg.Width, msg.Height)
 	// If there is audio, add the audio job config
 	if msg.HasAudio {
 		log.Printf("Audio Present: added to job")
@@ -58,12 +58,12 @@ func SubTranscodeQueue(ctx context.Context, m pubsub.Message) error {
 	// Store the job name in Firestore
 	_, err = firestoreClient.Collection("video").Doc(msg.MD5).Update(ctx, []firestore.Update{
 		{
-			Path:  "transcode-job",
+			Path:  "transcode.job",
 			Value: resp.GetName(),
 		},
 		{
-			Path:  "transcode-status",
-			Value: "Processing",
+			Path:  "transcode.status",
+			Value: "PROCESSING",
 		},
 	})
 

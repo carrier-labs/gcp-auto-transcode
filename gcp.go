@@ -1,6 +1,7 @@
 package cloudfunctiontranscode
 
 import (
+	"fmt"
 	"math"
 	"strconv"
 	"strings"
@@ -65,4 +66,9 @@ func (e *GCSEvent) getSizeMB() (SizeMB float64) {
 	SizeMB = float64(e.getSizeB()) / (1 << 20)
 	SizeMB = math.Round(SizeMB*100) / 100
 	return
+}
+
+// getMD5 returns MD5 hash as HEx string
+func (e *GCSEvent) getMD5() string {
+	return fmt.Sprintf("%x", e.MD5Hash)
 }

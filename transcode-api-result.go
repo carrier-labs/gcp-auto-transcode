@@ -43,7 +43,7 @@ func SubTranscodeResult(ctx context.Context, m pubsub.Message) error {
 	fmt.Printf("Job result: %+v\n", result)
 
 	// Find the corresponding document with job name
-	iter := firestoreClient.Collection("video").Where("transcode-job", "==", result.Job.Name).Documents(ctx)
+	iter := firestoreClient.Collection("video").Where("transcode.job", "==", result.Job.Name).Documents(ctx)
 	for {
 		doc, err := iter.Next()
 		if err == iterator.Done {
@@ -59,7 +59,7 @@ func SubTranscodeResult(ctx context.Context, m pubsub.Message) error {
 		// Store the job status in Firestore
 		doc.Ref.Update(ctx, []firestore.Update{
 			{
-				Path:  "transcode-status",
+				Path:  "transcode.status",
 				Value: result.Job.State,
 			},
 		})

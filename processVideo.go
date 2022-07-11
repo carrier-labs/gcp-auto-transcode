@@ -7,7 +7,9 @@ import (
 	"log"
 	"path"
 	"strconv"
+	"strings"
 
+	"cloud.google.com/go/firestore"
 	"cloud.google.com/go/pubsub"
 )
 
@@ -20,8 +22,8 @@ type msgTranscodeReq struct {
 	Width    int    `json:"width"`     // Width of video
 }
 
-// processVideoFile processes a video file uploaded to GCS
-func processVideoFile(ctx context.Context, e GCSEvent) error {
+// processOriginalVideoFile processes a video file uploaded to GCS
+func processOriginalVideoFile(ctx context.Context, e GCSEvent) error {
 
 	log.Printf("Processing Video: %s", e.Name)
 
@@ -40,10 +42,11 @@ func processVideoFile(ctx context.Context, e GCSEvent) error {
 
 	// create empty database entry
 	entry := &dbEntry{
-		Name:        path.Base(e.Name),
-		MD5:         fmt.Sprintf("%x", e.MD5Hash),
-		ContentType: e.ContentType,
+		Title: strings.TrimPrefix(path.Base(e.Name), path.Ext(e.Name)),
 		MetaData: dbMetaData{
+			OgFile:       path.Base(e.Name),
+			ContentType:  e.ContentType,
+			MD5:          e.getMD5(),
 			Width:        probeData.FirstVideoStream().Width,
 			Height:       probeData.FirstVideoStream().Height,
 			VideoCodec:   probeData.FirstVideoStream().CodecName,
@@ -60,7 +63,7 @@ func processVideoFile(ctx context.Context, e GCSEvent) error {
 
 	// create msgTranscodeVideo to publish to pubsub
 	msg := &msgTranscodeReq{
-		MD5:      entry.MD5,
+		MD5:      e.getMD5(),
 		GSURI:    fmt.Sprintf("gs://%s/%s", e.Bucket, e.Name), // gs filename
 		HasAudio: probeData.FirstAudioStream() != nil,         // check if audio stream exists
 		Height:   probeData.FirstVideoStream().Height,         // get video height
@@ -80,7 +83,7 @@ func processVideoFile(ctx context.Context, e GCSEvent) error {
 	}
 
 	// update the database entry with the Transcode Job ID
-	entry.TranscodeStatus = fmt.Sprintf("Queued: %s", ServerId)
+	entry.Transcode.Status = fmt.Sprintf("QUEUED: %s", ServerId)
 
 	// Log the server ID of the published message.
 	log.Printf("Published message ID: %s", ServerId)
@@ -89,9 +92,36 @@ func processVideoFile(ctx context.Context, e GCSEvent) error {
 	log.Printf("dbEntry: %+v", entry)
 
 	// write new file to database
-	if _, err = firestoreClient.Collection("video").Doc(entry.MD5).Set(ctx, entry); err != nil {
+	if _, err = firestoreClient.Collection("video").Doc(e.getMD5()).Set(ctx, entry); err != nil {
 		return fmt.Errorf("firestore set: %s", err)
 	}
 
+	return nil
+}
+
+// processTranscodedVideoFile processes a video file uploaded to GCS
+func processTranscodedVideoFile(ctx context.Context, e GCSEvent) error {
+
+	log.Printf("Processing Transcoded Video: %s", e.Name)
+
+	// get docref from firestore for this file
+	doc := firestoreClient.Collection("video").Doc(fmt.Sprintf("%x", e.MD5Hash))
+
+	// get just the filename  e.Name
+	filename := path.Base(e.Name)
+	// remove the extension from the filename
+	filename = strings.TrimPrefix(filename, path.Ext(filename))
+
+	// Update doc with file
+	_, err := doc.Update(ctx, []firestore.Update{
+		{
+			Path:  fmt.Sprintf("versions.%s", filename),
+			Value: true,
+		},
+	})
+
+	if err != nil {
+		return fmt.Errorf("firebase update: %s", err)
+	}
 	return nil
 }
