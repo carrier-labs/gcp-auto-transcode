@@ -27,7 +27,8 @@
                 "--entry-point=SubTranscodeQueue",
                 "--trigger-topic=transcode-queue",
                 "--runtime=go116"
-            ]
+            ],
+            "waitFor": ["-"]
         },
         {
             "name": "gcr.io/google.com/cloudsdktool/cloud-sdk",
@@ -41,7 +42,8 @@
                 "--entry-point=SubTranscodeResult",
                 "--trigger-topic=transcode-result",
                 "--runtime=go116"
-            ]
+            ],
+            "waitFor": ["-"]
         }
     ]
 }
