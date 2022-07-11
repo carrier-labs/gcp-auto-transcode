@@ -7,7 +7,7 @@ type dbEntry struct {
 	Name            string             `firestore:"og-name"`
 	MD5             string             `firestore:"md5"`
 	ContentType     string             `firestore:"content-type"` // mime type
-	MetaData        *dbMetaData        `firestore:"metadata"`
+	MetaData        *dbMetaData        `firestore:"metadata,omitempty"`
 	ProbeData       *ffprobe.ProbeData `firestore:"ffprobe-result,omitempty"`
 	TranscodeJob    string             `firestore:"transcode-job"`    // Transcode Job ID
 	TranscodeStatus string             `firestore:"transcode-status"` // Transcode Job Status

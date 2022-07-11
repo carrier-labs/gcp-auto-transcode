@@ -37,14 +37,13 @@ func processVideoFile(ctx context.Context, e GCSEvent) error {
 		Name:        path.Base(e.Name),
 		MD5:         fmt.Sprintf("%x", e.MD5Hash),
 		ContentType: e.ContentType,
-		ProbeData:   probeData,
-		MetaData: &dbMetaData{
-			Width:  probeData.FirstVideoStream().Width,
-			Height: probeData.FirstVideoStream().Height,
-			SizeB:  e.getSizeB(),
-			SizeMB: e.getSizeMB(),
-		},
-		TranscodeStatus: "Request Sent",
+		// ProbeData:   probeData,
+		// MetaData: &dbMetaData{
+		// 	Width:  probeData.FirstVideoStream().Width,
+		// 	Height: probeData.FirstVideoStream().Height,
+		// 	SizeB:  e.getSizeB(),
+		// 	SizeMB: e.getSizeMB(),
+		// },
 	}
 
 	// convert duration string to seconds float
@@ -76,6 +75,9 @@ func processVideoFile(ctx context.Context, e GCSEvent) error {
 	if err != nil {
 		return fmt.Errorf("pubsub publish: %s", err)
 	}
+
+	// update the database entry with the Transcode Job ID
+	entry.TranscodeStatus = fmt.Sprintf("Queued: %s", ServerId)
 
 	// Log the server ID of the published message.
 	log.Printf("Published message ID: %s", ServerId)
