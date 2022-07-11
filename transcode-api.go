@@ -55,17 +55,33 @@ func SubTranscodeQueue(ctx context.Context, m pubsub.Message) error {
 
 	log.Printf("Created Job: %s", resp.GetName())
 
-	// Store the job name in Firestore
-	_, err = firestoreClient.Collection("video").Doc(msg.MD5).Update(ctx, []firestore.Update{
+	// Create new firestore.Update array
+	updates := []firestore.Update{
 		{
-			Path:  "transcode.job",
+			Path:  "transcode.ref",
 			Value: resp.GetName(),
 		},
 		{
 			Path:  "transcode.status",
 			Value: "PROCESSING",
 		},
-	})
+		{
+			Path:  "versions.default",
+			Value: jobConfig.MuxStreams[len(jobConfig.MuxStreams)-1].FileName,
+		},
+	}
+
+	// Range over the transcode config and add details to the updates
+	for _, m := range jobConfig.MuxStreams {
+		updates = append(updates, firestore.Update{
+			Path:  fmt.Sprintf("versions.%s.ready", m.FileName),
+			Value: false,
+		})
+		// ToDo: Add the other details to the updates
+	}
+
+	// Store the job name in Firestore
+	_, err = firestoreClient.Collection("video").Doc(msg.MD5).Update(ctx, updates)
 
 	if err != nil {
 		return fmt.Errorf("firebase update: %s", err)
