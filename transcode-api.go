@@ -67,7 +67,7 @@ func SubTranscodeQueue(ctx context.Context, m pubsub.Message) error {
 		},
 		{
 			Path:  "versions.default",
-			Value: jobConfig.MuxStreams[len(jobConfig.MuxStreams)-1].FileName,
+			Value: fmt.Sprintf("%s.%s", jobConfig.MuxStreams[len(jobConfig.MuxStreams)-1].Key, jobConfig.MuxStreams[len(jobConfig.MuxStreams)-1].Container),
 		},
 	}
 
