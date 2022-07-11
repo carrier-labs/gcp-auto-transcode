@@ -80,10 +80,12 @@ func processVideoFile(ctx context.Context, e GCSEvent) error {
 	// Log the server ID of the published message.
 	log.Printf("Published message ID: %s", ServerId)
 
+	// Log the dbEntry
+	log.Printf("dbEntry: %+v", entry)
+
 	// write new file to database
-	_, err = firestoreClient.Collection("video").Doc(entry.MD5).Set(ctx, entry)
-	if err != nil {
-		return fmt.Errorf("firebase set: %s", err)
+	if _, err = firestoreClient.Collection("video").Doc(entry.MD5).Set(ctx, entry); err != nil {
+		return fmt.Errorf("firestore set: %s", err)
 	}
 
 	return nil
