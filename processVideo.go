@@ -43,14 +43,19 @@ func processVideoFile(ctx context.Context, e GCSEvent) error {
 		Name:        path.Base(e.Name),
 		MD5:         fmt.Sprintf("%x", e.MD5Hash),
 		ContentType: e.ContentType,
-		ProbeData:   *probeData,
 		MetaData: dbMetaData{
-			Width:  probeData.FirstVideoStream().Width,
-			Height: probeData.FirstVideoStream().Height,
-			SizeB:  e.getSizeB(),
-			SizeMB: e.getSizeMB(),
-			Length: duration,
+			Width:        probeData.FirstVideoStream().Width,
+			Height:       probeData.FirstVideoStream().Height,
+			VideoCodec:   probeData.FirstVideoStream().CodecName,
+			BitRate:      probeData.FirstVideoStream().BitRate,
+			FrameRateAvg: probeData.FirstVideoStream().AvgFrameRate,
+			SizeB:        e.getSizeB(),
+			SizeMB:       e.getSizeMB(),
+			Length:       duration,
 		},
+	}
+	if probeData.FirstAudioStream() != nil {
+		entry.MetaData.AudioCodec = probeData.FirstAudioStream().CodecName
 	}
 
 	// create msgTranscodeVideo to publish to pubsub
