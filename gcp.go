@@ -70,8 +70,18 @@ func (e *GCSEvent) getSizeMB() (SizeMB float64) {
 }
 
 // getMD5 returns MD5 hash as HEx string
-func (e *GCSEvent) getMD5() string {
-	return fmt.Sprintf("%x", e.MD5Hash)
+func (e *GCSEvent) getRefMD5() string {
+
+	md5 := fmt.Sprintf("%x", e.MD5Hash)
+	dir := path.Base(path.Dir(e.Name))
+
+	// This is the original file
+	if dir == md5 {
+		return md5
+	}
+
+	// This is a transcoded file
+	return dir
 }
 
 // getTitle returns the title of the file.

@@ -73,17 +73,15 @@ func SubTranscodeQueue(ctx context.Context, m pubsub.Message) error {
 
 	// Range over the transcode config and add details to the updates
 	for _, m := range jobConfig.MuxStreams {
+		version := versionData{
+			Filename: fmt.Sprintf("%s.%s", m.Key, m.Container),
+			Ready:    false,
+		}
 		// Add ready field
 		updates = append(updates, firestore.Update{
-			Path:  fmt.Sprintf("versions.%s.ready", m.Key),
-			Value: false,
+			Path:  fmt.Sprintf("versions.%s", m.Key),
+			Value: version,
 		})
-		// Add Filename
-		updates = append(updates, firestore.Update{
-			Path:  fmt.Sprintf("versions.%s.filename", m.Key),
-			Value: fmt.Sprintf("%s.%s", m.Key, m.Container),
-		})
-		// ToDo: Add the other details to the updates
 	}
 
 	// Store the job name in Firestore

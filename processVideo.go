@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"path"
-	"strconv"
 	"strings"
 
 	"cloud.google.com/go/firestore"
@@ -27,47 +26,24 @@ func processOriginalVideoFile(ctx context.Context, e GCSEvent) error {
 
 	log.Printf("Processing Video: %s", e.Name)
 
-	// use ffprobe to get the video's metadata
-	probeData, err := probeVideoFromGCSEvent(ctx, e)
+	// Get video metadata
+	originalVer, err := getVideoMetadata(ctx, e)
 	if err != nil {
-		log.Printf("ffmpeg probe error: %s", err)
-	}
-	log.Printf("ffmpeg probe success: %+v", probeData)
-
-	// convert duration string to seconds float
-	duration, err := strconv.ParseFloat(probeData.FirstVideoStream().Duration, 64)
-	if err != nil {
-		log.Printf("Error parsing duration: %s", err)
+		return fmt.Errorf("getVideoMetadata: %s", err)
 	}
 
 	// create empty database entry
 	entry := &dbEntry{
 		Title: e.getTitle(),
-		MetaData: dbMetaData{
-			OgFile:       path.Base(e.Name),
-			ContentType:  e.ContentType,
-			MD5:          e.getMD5(),
-			Width:        probeData.FirstVideoStream().Width,
-			Height:       probeData.FirstVideoStream().Height,
-			VideoCodec:   probeData.FirstVideoStream().CodecName,
-			BitRate:      probeData.FirstVideoStream().BitRate,
-			FrameRateAvg: probeData.FirstVideoStream().AvgFrameRate,
-			SizeB:        e.getSizeB(),
-			SizeMB:       e.getSizeMB(),
-			Length:       duration,
-		},
-	}
-	if probeData.FirstAudioStream() != nil {
-		entry.MetaData.AudioCodec = probeData.FirstAudioStream().CodecName
 	}
 
 	// create msgTranscodeVideo to publish to pubsub
 	msg := &msgTranscodeReq{
-		MD5:      e.getMD5(),
+		MD5:      e.getRefMD5(),
 		GSURI:    fmt.Sprintf("gs://%s/%s", e.Bucket, e.Name), // gs filename
-		HasAudio: probeData.FirstAudioStream() != nil,         // check if audio stream exists
-		Height:   probeData.FirstVideoStream().Height,         // get video height
-		Width:    probeData.FirstVideoStream().Width,          // get video width
+		HasAudio: originalVer.AudioCodec != "",                // check if audio stream exists
+		Height:   originalVer.Height,                          // get video height
+		Width:    originalVer.Width,                           // get video width
 	}
 
 	// convert struct to bytes
@@ -93,8 +69,20 @@ func processOriginalVideoFile(ctx context.Context, e GCSEvent) error {
 	log.Printf("dbEntry: %+v", entry)
 
 	// write new file to database
-	if _, err = firestoreClient.Collection("video").Doc(e.getMD5()).Set(ctx, entry); err != nil {
+	doc := firestoreClient.Collection("video").Doc(e.getRefMD5())
+	if _, err = doc.Set(ctx, entry); err != nil {
 		return fmt.Errorf("firestore set: %s", err)
+	}
+
+	// Update with original version
+	_, err = doc.Update(ctx, []firestore.Update{
+		{
+			Path:  "versions.original",
+			Value: firestore.ArrayUnion(originalVer),
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("firestore update: %s", err)
 	}
 
 	return nil
@@ -105,24 +93,25 @@ func processTranscodedVideoFile(ctx context.Context, e GCSEvent) error {
 
 	log.Printf("Processing Transcoded Video: %s", e.Name)
 
-	// get the MD5 from the file name
-	dir := path.Dir(e.Name)
-	// get last part of the path
-	dir = path.Base(dir)
+	versionInfo, err := getVideoMetadata(ctx, e)
+	if err != nil {
+		return fmt.Errorf("getVideoMetadata: %s", err)
+	}
+
+	// Set ready field to true
+	versionInfo.Ready = true
 
 	// get docref from firestore for this file
-	doc := firestoreClient.Collection("video").Doc(dir)
+	doc := firestoreClient.Collection("video").Doc(e.getRefMD5())
 
-	// get just the filename  e.Name
-	filename := path.Base(e.Name)
-	// trim extention
-	key := strings.TrimSuffix(filename, path.Ext(filename))
+	// get Key from name
+	key := strings.TrimSuffix(path.Base(e.Name), path.Ext(path.Base(e.Name)))
 
 	// Update doc with file
-	_, err := doc.Update(ctx, []firestore.Update{
+	_, err = doc.Update(ctx, []firestore.Update{
 		{
-			Path:  fmt.Sprintf("versions.%s.ready", key),
-			Value: true,
+			Path:  fmt.Sprintf("versions.%s", key),
+			Value: versionInfo,
 		},
 	})
 
