@@ -3,6 +3,7 @@ package cloudfunctiontranscode
 import (
 	"fmt"
 	"math"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -71,4 +72,16 @@ func (e *GCSEvent) getSizeMB() (SizeMB float64) {
 // getMD5 returns MD5 hash as HEx string
 func (e *GCSEvent) getMD5() string {
 	return fmt.Sprintf("%x", e.MD5Hash)
+}
+
+// getTitle returns the title of the file.
+func (e *GCSEvent) getTitle() string {
+	// Get filename from path
+	s := path.Base(e.Name)
+	// trim extension
+	s = strings.TrimSuffix(s, path.Ext(s))
+	// remove "og-" prefix
+	s = strings.TrimPrefix(s, "og-")
+	return s
+
 }

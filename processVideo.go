@@ -7,7 +7,6 @@ import (
 	"log"
 	"path"
 	"strconv"
-	"strings"
 
 	"cloud.google.com/go/firestore"
 	"cloud.google.com/go/pubsub"
@@ -42,7 +41,7 @@ func processOriginalVideoFile(ctx context.Context, e GCSEvent) error {
 
 	// create empty database entry
 	entry := &dbEntry{
-		Title: strings.TrimPrefix(path.Base(e.Name), path.Ext(e.Name)),
+		Title: e.getTitle(),
 		MetaData: dbMetaData{
 			OgFile:       path.Base(e.Name),
 			ContentType:  e.ContentType,
