@@ -78,7 +78,7 @@ func processOriginalVideoFile(ctx context.Context, e GCSEvent) error {
 	_, err = doc.Update(ctx, []firestore.Update{
 		{
 			Path:  "versions.original",
-			Value: firestore.ArrayUnion(originalVer),
+			Value: originalVer,
 		},
 	})
 	if err != nil {
