@@ -19,6 +19,9 @@ var MaxTranscodeJobs = 20
 // SubTranscodeQueue uses GCP PubSub trigger to add jobs GCS using Transcoder API
 func SubTranscodeQueue(ctx context.Context, m pubsub.Message) error {
 
+	log.Printf("SubTranscodeQueue: Called")
+	log.Printf("pubSub.Message: %+v", m)
+
 	// Unmarshal the message into a msgTranscodeReq
 	var msg msgTranscodeReq
 	err := json.Unmarshal(m.Data, &msg)

@@ -26,6 +26,9 @@ type TranscoderJobResult struct {
 // TranscodeVideo uses GCP PubSub trigger to add jobs GCS using Transcoder API
 func SubTranscodeResult(ctx context.Context, m pubsub.Message) error {
 
+	log.Printf("SubTranscodeResult: Called")
+	log.Printf("pubSub.Message: %+v", m)
+
 	// Unmarshal the data into a TranscodeJobResult
 	result := TranscoderJobResult{}
 	err := json.Unmarshal(m.Data, &result)
