@@ -42,8 +42,8 @@ func SubTranscodeQueue(ctx context.Context, m pubsub.Message) error {
 	resp, err := transcoderClient.CreateJob(ctx, &transcoderpb.CreateJobRequest{
 		Parent: fmt.Sprintf("projects/%s/locations/%s", ProjectId, "europe-west4"),
 		Job: &transcoderpb.Job{
-			InputUri:  msg.FileName,
-			OutputUri: strings.TrimSuffix(msg.FileName, path.Base(msg.FileName)),
+			InputUri:  msg.GSURI,
+			OutputUri: strings.TrimSuffix(msg.GSURI, path.Base(msg.GSURI)),
 			JobConfig: &transcoderpb.Job_Config{
 				Config: jobConfig,
 			},

@@ -14,7 +14,7 @@ import (
 // msgTranscodeReq holds details for requesting Transcode API Jobs on this file
 type msgTranscodeReq struct {
 	MD5      string `json:"md5"`       //
-	FileName string `json:"file_name"` // GCS file name
+	GSURI    string `json:"gs_uri"`    // GCS file name
 	HasAudio bool   `json:"has_audio"` // has audio
 	Height   int    `json:"height"`    // Height of video
 	Width    int    `json:"width"`     // Width of video
@@ -61,10 +61,10 @@ func processVideoFile(ctx context.Context, e GCSEvent) error {
 	// create msgTranscodeVideo to publish to pubsub
 	msg := &msgTranscodeReq{
 		MD5:      entry.MD5,
-		FileName: e.Name,                              // gs filename
-		HasAudio: probeData.FirstAudioStream() != nil, // check if audio stream exists
-		Height:   probeData.FirstVideoStream().Height, // get video height
-		Width:    probeData.FirstVideoStream().Width,  // get video width
+		GSURI:    fmt.Sprintf("gs://%s/%s", e.Bucket, e.Name), // gs filename
+		HasAudio: probeData.FirstAudioStream() != nil,         // check if audio stream exists
+		Height:   probeData.FirstVideoStream().Height,         // get video height
+		Width:    probeData.FirstVideoStream().Width,          // get video width
 	}
 
 	// convert struct to bytes
