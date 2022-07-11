@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"path"
+	"strconv"
 
 	"cloud.google.com/go/pubsub"
 )
@@ -32,24 +33,24 @@ func processVideoFile(ctx context.Context, e GCSEvent) error {
 	log.Printf("ffmpeg probe success: %+v", probeData)
 
 	// convert duration string to seconds float
-	// duration, err := strconv.ParseFloat(probeData.FirstVideoStream().Duration, 64)
-	// if err != nil {
-	// 	log.Printf("Error parsing duration: %s", err)
-	// }
+	duration, err := strconv.ParseFloat(probeData.FirstVideoStream().Duration, 64)
+	if err != nil {
+		log.Printf("Error parsing duration: %s", err)
+	}
 
 	// create empty database entry
 	entry := &dbEntry{
 		Name:        path.Base(e.Name),
 		MD5:         fmt.Sprintf("%x", e.MD5Hash),
 		ContentType: e.ContentType,
-		// ProbeData:   probeData,
-		// MetaData: &dbMetaData{
-		// 	Width:  probeData.FirstVideoStream().Width,
-		// 	Height: probeData.FirstVideoStream().Height,
-		// 	SizeB:  e.getSizeB(),
-		// 	SizeMB: e.getSizeMB(),
-		// 	Length: duration,
-		// },
+		ProbeData:   *probeData,
+		MetaData: dbMetaData{
+			Width:  probeData.FirstVideoStream().Width,
+			Height: probeData.FirstVideoStream().Height,
+			SizeB:  e.getSizeB(),
+			SizeMB: e.getSizeMB(),
+			Length: duration,
+		},
 	}
 
 	// create msgTranscodeVideo to publish to pubsub

@@ -4,13 +4,13 @@ import "gopkg.in/vansante/go-ffprobe.v2"
 
 // dbEntry firebase database entry
 type dbEntry struct {
-	Name            string             `firestore:"og-name"`
-	MD5             string             `firestore:"md5"`
-	ContentType     string             `firestore:"content-type"` // mime type
-	MetaData        *dbMetaData        `firestore:"metadata,omitempty"`
-	ProbeData       *ffprobe.ProbeData `firestore:"ffprobe-result,omitempty"`
-	TranscodeJob    string             `firestore:"transcode-job"`    // Transcode Job ID
-	TranscodeStatus string             `firestore:"transcode-status"` // Transcode Job Status
+	Name            string            `firestore:"og-name"`
+	MD5             string            `firestore:"md5"`
+	ContentType     string            `firestore:"content-type"` // mime type
+	MetaData        dbMetaData        `firestore:"metadata,omitempty"`
+	ProbeData       ffprobe.ProbeData `firestore:"ffprobe-result,omitempty"`
+	TranscodeJob    string            `firestore:"transcode-job"`    // Transcode Job ID
+	TranscodeStatus string            `firestore:"transcode-status"` // Transcode Job Status
 }
 
 // dbMetaData struct to hold image/video metadata
