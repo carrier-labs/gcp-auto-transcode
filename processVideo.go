@@ -116,7 +116,7 @@ func processTranscodedVideoFile(ctx context.Context, e GCSEvent) error {
 	// get just the filename  e.Name
 	filename := path.Base(e.Name)
 	// trim extention
-	key := strings.TrimPrefix(filename, path.Ext(filename))
+	key := strings.TrimSuffix(filename, path.Ext(filename))
 
 	// Update doc with file
 	_, err := doc.Update(ctx, []firestore.Update{
