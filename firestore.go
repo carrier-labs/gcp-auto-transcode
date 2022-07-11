@@ -5,9 +5,9 @@ type dbEntry struct {
 	Title     string     `firestore:"title"`
 	MetaData  dbMetaData `firestore:"metadata,omitempty"`
 	Transcode struct {
-		Job    string `firestore:"jobId"`  // Transcode Job ID
+		Ref    string `firestore:"ref"`    // Transcode ref (JobID or PubSub message)
 		Status string `firestore:"status"` // Transcode Job Status
-	} `firestore:"transcode-api"`
+	} `firestore:"transcode"`
 }
 
 // dbMetaData struct to hold image/video metadata

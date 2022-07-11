@@ -83,7 +83,8 @@ func processOriginalVideoFile(ctx context.Context, e GCSEvent) error {
 	}
 
 	// update the database entry with the Transcode Job ID
-	entry.Transcode.Status = fmt.Sprintf("QUEUED: %s", ServerId)
+	entry.Transcode.Ref = ServerId
+	entry.Transcode.Status = "QUEUED"
 
 	// Log the server ID of the published message.
 	log.Printf("Published message ID: %s", ServerId)
@@ -104,13 +105,16 @@ func processTranscodedVideoFile(ctx context.Context, e GCSEvent) error {
 
 	log.Printf("Processing Transcoded Video: %s", e.Name)
 
+	// get the MD5 from the file name
+	dir := path.Dir(e.Name)
+	// get last part of the path
+	dir = path.Base(dir)
+
 	// get docref from firestore for this file
-	doc := firestoreClient.Collection("video").Doc(fmt.Sprintf("%x", e.MD5Hash))
+	doc := firestoreClient.Collection("video").Doc(dir)
 
 	// get just the filename  e.Name
 	filename := path.Base(e.Name)
-	// remove the extension from the filename
-	filename = strings.TrimPrefix(filename, path.Ext(filename))
 
 	// Update doc with file
 	_, err := doc.Update(ctx, []firestore.Update{

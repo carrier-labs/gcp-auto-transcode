@@ -71,7 +71,7 @@ func WatchStorageBucket(ctx context.Context, e GCSEvent) error {
 
 	// Check file is in Uploads folder
 	if match, _ := (path.Match("media/upload/*.*", e.Name)); match {
-		log.Printf("Match: New file in 'media/upload/'")
+		log.Printf("Match: New upload")
 
 		// Check file mime type is video or image
 		switch e.getContentBaseType() {
